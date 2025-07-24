@@ -1,12 +1,52 @@
-# NYC Taxi Trip Duration Prediction - MLOps Pipeline
+# NYC Taxi Trip Duration Prediction - MLOps Learning Project
 
-[![MLOps](https://img.shields.io/badge/MLOps-Production%20Ready-green)](https://github.com/DataTalksClub/mlops-zoomcamp)
-[![AWS](https://img.shields.io/badge/AWS-Cloud%20Native-orange)](https://aws.amazon.com/)
-[![Apache Airflow](https://img.shields.io/badge/Apache%20Airflow-Orchestration-blue)](https://airflow.apache.org/)
-[![MLflow](https://img.shields.io/badge/MLflow-Experiment%20Tracking-lightblue)](https://mlflow.org/)
-[![Evidently AI](https://img.shields.io/badge/Evidently%20AI-Monitoring-purple)](https://www.evidentlyai.com/)
+A **personal learning project** for building an MLOps pipeline that predicts NYC taxi trip durations. This project emphasizes simplicity, cost-efficiency, and practical learning over enterprise-grade complexity.
 
-A production-ready, end-to-end MLOps pipeline for predicting NYC taxi trip durations using real-time streaming data. This project demonstrates best practices in MLOps including automated training, monitoring, and deployment using modern cloud-native technologies.
+## 📋 Project Status
+
+**Infrastructure Complete - Ready for AWS Deployment**
+- ✅ All Terraform modules defined and tested
+- ✅ ECS Fargate task definitions for Airflow and MLflow
+- ✅ Lambda deployment package created (392MB)
+- ✅ Cost-optimized for ~$90-120/month
+
+## 🏗️ Architecture Overview
+
+```mermaid
+graph TB
+    subgraph "AWS Cloud Infrastructure"
+        subgraph "Data Layer"
+            S3A[S3: MLflow Artifacts]
+            S3B[S3: Data Storage]
+            S3C[S3: Monitoring Reports]
+            EFS[EFS: Shared Storage]
+        end
+        
+        subgraph "Compute Layer"
+            ECS[ECS Fargate: Airflow + MLflow]
+            Lambda[Lambda: Predictions]
+            RDS[RDS PostgreSQL]
+        end
+        
+        subgraph "Networking"
+            ALB[Application Load Balancer]
+            KDS[Kinesis Data Stream]
+        end
+        
+        KDS -- Lambda
+        Lambda -- S3B
+        ECS -- RDS
+        ECS -- S3A
+        ECS -- S3B
+        ECS -- S3C
+        ECS -- EFS
+        ALB -- ECS
+    end
+    
+    style KDS fill:#ff9800
+    style Lambda fill:#4caf50
+    style ECS fill:#2196f3
+```
 
 ## 🏗️ Architecture Overview
 
@@ -167,19 +207,13 @@ terraform apply
 terraform output
 ```
 
-### 3. Start Local Services
+### 3. Deploying on AWS
 
 ```bash
-cd ../airflow
+cd ../infra
+terraform apply
 
-# Set Airflow UID (Linux/Mac)
-export AIRFLOW_UID=$(id -u)
-
-# Start services
-docker-compose up -d
-
-# Check services are running
-docker-compose ps
+# This will setup all AWS infrastructure including ECS, RDS, and S3 buckets
 ```
 
 ### 4. Initialize Data and Test Pipeline
@@ -348,45 +382,109 @@ aws logs tail /aws/lambda/taxi-trip-duration-predictor --follow
 # Visit http://localhost:8080 → DAGs → taxi_model_training
 ```
 
-## 🛠️ Maintenance
+## 💰 Cost Optimization
 
-### Regular Tasks
+This project is optimized for learning with minimal AWS costs:
 
-1. **Weekly**: Review model performance metrics
-2. **Monthly**: Update dependencies and security patches
-3. **Quarterly**: Review and optimize infrastructure costs
-4. **As needed**: Retrain models if drift is detected
+- **Single NAT Gateway**: Saves $45/month
+- **EFS Bursting Mode**: Saves $15/month
+- **ARM-based RDS**: db.t4g.micro for cost efficiency
+- **FARGATE_SPOT**: For non-critical workloads
+- **14-day log retention**: Reduces CloudWatch costs
 
-### Backup and Recovery
+**Estimated Monthly Cost**: $90-120
 
-```bash
-# Backup MLflow experiments
-aws s3 sync s3://your-mlflow-bucket/ ./backups/mlflow/
+## 📁 Project Structure
 
-# Backup Airflow configurations
-docker-compose exec postgres pg_dump airflow > airflow_backup.sql
-
-# Export Terraform state
-terraform state pull > terraform_state_backup.json
+```
+mlops-pipeline/
+├── airflow/                 # Airflow container and DAGs
+│   ├── dags/               # ML pipeline workflows
+│   ├── Dockerfile          # Custom Airflow image
+│   └── requirements.txt    
+├── infra/                  # Terraform infrastructure
+│   ├── main-modular.tf     # Main configuration
+│   ├── modules/            # Reusable modules
+│   └── variables.tf        
+├── lambda_function/        # Inference service
+│   └── lambda_function.py  
+├── scripts/                # Utility scripts
+│   ├── build_lambda.sh     # Lambda packaging
+│   ├── data_setup.py       # Data preparation
+│   └── event_simulation.py # Testing
+└── taxi_predictor.zip      # Lambda deployment package
 ```
 
-## 🤝 Contributing
+## 🔧 Key Features
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make changes and test thoroughly
-4. Submit a pull request with detailed description
+### Infrastructure as Code
+- Modular Terraform design
+- Remote state management (S3 + DynamoDB)
+- Cost-optimized resource sizing
 
-## 📝 License
+### ML Pipeline
+- Automated retraining with Airflow
+- Model versioning with MLflow
+- Real-time inference with Lambda
+- Drift monitoring with Evidently
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+### Simplified Operations
+- No Kubernetes complexity
+- Minimal security for learning
+- Focus on core MLOps concepts
 
-## 🙏 Acknowledgments
+## 🧪 Testing the Pipeline
 
-- [DataTalks.Club MLOps Zoomcamp](https://github.com/DataTalksClub/mlops-zoomcamp) for the foundational knowledge
-- NYC Taxi & Limousine Commission for the dataset
-- Open source community for the amazing tools
+```bash
+# Upload sample data to S3
+python scripts/data_setup.py
+
+# Simulate taxi ride events
+python scripts/event_simulation.py --max-events 10
+
+# Check Lambda logs
+aws logs tail /aws/lambda/taxi-trip-duration-predictor
+```
+
+## ⚠️ Important Notes
+
+1. **Learning Project**: Not production-ready, focuses on understanding MLOps concepts
+2. **Security**: Basic security only - do not use for sensitive data
+3. **Lambda Size**: 392MB package requires S3 intermediate storage
+4. **Cold Starts**: Expect Lambda cold start delays due to large package
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+1. **Lambda timeout**: Increase timeout in `variables.tf`
+2. **ECS tasks not starting**: Check CloudWatch logs
+3. **ALB health checks failing**: Verify security groups
+
+### Useful Commands
+
+```bash
+# Check ECS service status
+aws ecs describe-services --cluster mlops-taxi-prediction-cluster-dev --services mlops-airflow-dev
+
+# View Lambda logs
+aws logs tail /aws/lambda/taxi-trip-duration-predictor --follow
+
+# Test ALB endpoints
+curl http://alb-dns/health
+```
+
+## 📚 Learning Resources
+
+- [AWS ECS Documentation](https://docs.aws.amazon.com/ecs/)
+- [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest)
+- [MLflow Documentation](https://mlflow.org/docs/latest/index.html)
+- [Apache Airflow Guides](https://airflow.apache.org/docs/)
+
+## 🤝 Acknowledgments
+
+Built as a learning exercise inspired by various MLOps courses and tutorials. Special thanks to the open-source community for making these tools accessible for learning.
 
 ---
 
-**Built with ❤️ for the MLOps community**
+**Remember**: This is a learning project. Keep it simple, keep it cheap, keep learning! 🚀

@@ -107,7 +107,7 @@ def main():
                        default=os.environ.get('DATA_STORAGE_BUCKET', 'mlops-taxi-prediction-data-storage-dev'),
                        help='S3 bucket name')
     parser.add_argument('--stream', type=str,
-                       default=os.environ.get('KINESIS_STREAM_NAME', 'taxi-ride-events'),
+                       default=os.environ.get('KINESIS_STREAM_NAME', 'taxi-ride-predictions-stream'),
                        help='Kinesis stream name')
     
     args = parser.parse_args()

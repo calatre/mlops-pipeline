@@ -1,14 +1,12 @@
-# Web Interface Integration Plan
+# Optional Web Dashboard (Future Enhancement)
 
-This document outlines the plan for creating a unified web interface that provides a single entry point to access Airflow, MLflow, and Evidently AI interfaces.
+**Simple dashboard idea** for accessing all MLOps services from one place. This is optional and can be built after the main pipeline is working.
 
-## 🎯 Objectives
+## Why Build This?
 
-1. **Single Entry Point**: Provide one dashboard to access all MLOps interfaces
-2. **Service Health Monitoring**: Display status of all components at a glance
-3. **Quick Navigation**: Easy links to specific sections of each service
-4. **Unified Authentication**: Single sign-on where possible
-5. **Real-time Updates**: Live status indicators and metrics
+- **Convenience**: Access Airflow and MLflow from one page
+- **Learning**: Practice building a simple web app
+- **Monitoring**: Quick health checks without AWS Console
 
 ## 🏗️ Architecture Options
 
@@ -125,9 +123,9 @@ graph TB
 - User management
 - Custom dashboards
 
-## 🚀 Recommended Implementation (Option 1)
+## Quick Implementation (1-2 hours)
 
-### Project Structure
+For a learning project, keep it super simple:
 ```
 dashboard/
 ├── app.py                  # Flask application

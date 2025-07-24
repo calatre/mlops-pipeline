@@ -1,6 +1,8 @@
-# Failure Points Analysis and Mitigation Strategies
+# Common Issues & Quick Fixes
 
-This document outlines potential failure points in the MLOPs pipeline and provides mitigation strategies for each.
+**Learning project troubleshooting guide** - Simple solutions for common problems.
+
+> 💡 **Remember**: This is a learning project. If something breaks, it's a learning opportunity!
 
 ## ⚠️ Critical Failure Points
 
