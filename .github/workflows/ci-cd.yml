@@ -6,6 +6,7 @@ on:
     paths:
       - 'airflow/**'
       - 'lambda_function/**'
+      - 'mlflow/**'
       - 'infra/**'
       - '.github/workflows/**'
   pull_request:
@@ -13,6 +14,7 @@ on:
     paths:
       - 'airflow/**'
       - 'lambda_function/**'
+      - 'mlflow/**'
       - 'infra/**'
       - '.github/workflows/**'
 
@@ -31,7 +33,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Install Dependencies
         run: |
@@ -39,6 +41,7 @@ jobs:
           pip install pylint pytest black isort
           if [ -f airflow/requirements.txt ]; then pip install -r airflow/requirements.txt; fi
           if [ -f lambda_function/requirements.txt ]; then pip install -r lambda_function/requirements.txt; fi
+          if [ -f mlflow/requirements.txt ]; then pip install -r mlflow/requirements.txt; fi
 
       - name: Code Formatting Check (Black)
         run: |
@@ -79,6 +82,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 1200
 
       - name: Terraform Format Check
         working-directory: ./infra
@@ -116,10 +120,14 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 1200
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Set Environment Variables
         run: |
@@ -133,75 +141,38 @@ jobs:
             echo "REPOSITORY=${{ env.PROJECT_NAME }}-${{ matrix.service }}-app-dev" >> $GITHUB_ENV
           fi
 
-      - name: Build Docker Image - Airflow
+      - name: Build and Push Docker Image - Airflow
         if: matrix.service == 'airflow'
-        run: |
-          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG \
-                       -t $REGISTRY/$REPOSITORY:latest \
-                       ./airflow/
+        uses: docker/build-push-action@v5
+        with:
+          context: ./airflow
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:latest
 
-      - name: Build Docker Image - MLflow
+      - name: Build and Push Docker Image - MLflow
         if: matrix.service == 'mlflow'
-        run: |
-          # Create MLflow Dockerfile if it doesn't exist
-          if [ ! -f mlflow/Dockerfile ]; then
-            mkdir -p mlflow
-            cat > mlflow/Dockerfile << 'DOCKERFILE_EOF'
-          FROM python:3.10-slim
+        uses: docker/build-push-action@v5
+        with:
+          context: ./mlflow
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:latest
 
-          WORKDIR /app
-
-          # Install system dependencies
-          RUN apt-get update && apt-get install -y \
-              gcc \
-              && rm -rf /var/lib/apt/lists/*
-
-          # Install MLflow and dependencies
-          RUN pip install mlflow[extras]==2.7.1 \
-                          boto3 \
-                          psycopg2-binary \
-                          pymysql
-
-          # Expose MLflow port
-          EXPOSE 5000
-
-          # Set environment variables
-          ENV MLFLOW_HOME=/app
-
-          # Command to run MLflow server
-          CMD ["mlflow", "server", \
-               "--host", "0.0.0.0", \
-               "--port", "5000", \
-               "--default-artifact-root", "${MLFLOW_ARTIFACT_ROOT:-s3://mlops-taxi-prediction-mlflow-artifacts-dev}", \
-               "--backend-store-uri", "${MLFLOW_BACKEND_STORE_URI:-sqlite:///mlflow.db}"]
-          DOCKERFILE_EOF
-          fi
-          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG \
-                       -t $REGISTRY/$REPOSITORY:latest \
-                       ./mlflow/
-
-      - name: Build Docker Image - Lambda
+      - name: Build and Push Docker Image - Lambda
         if: matrix.service == 'lambda'
-        run: |
-          # Create Lambda Dockerfile if it doesn't exist
-          if [ ! -f lambda_function/Dockerfile ]; then
-            cat > lambda_function/Dockerfile << 'DOCKERFILE_EOF'
-          FROM public.ecr.aws/lambda/python:3.10
-
-          # Copy requirements and install dependencies
-          COPY requirements.txt ${LAMBDA_TASK_ROOT}
-          RUN pip install -r requirements.txt
-
-          # Copy function code
-          COPY lambda_function.py ${LAMBDA_TASK_ROOT}
-
-          # Set the CMD to your handler
-          CMD ["lambda_function.lambda_handler"]
-          DOCKERFILE_EOF
-          fi
-          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG \
-                       -t $REGISTRY/$REPOSITORY:latest \
-                       ./lambda_function/
+        uses: docker/build-push-action@v5
+        with:
+          context: ./lambda_function
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:latest
 
       - name: Run Security Scan with Trivy
         uses: aquasecurity/trivy-action@master
@@ -218,20 +189,12 @@ jobs:
           sarif_file: 'trivy-results.sarif'
         continue-on-error: true
 
-      - name: Push Image to ECR
-        run: |
-          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
-          docker push $REGISTRY/$REPOSITORY:latest
-
-      - name: Image Digest
-        run: |
-          echo "Image pushed: $REGISTRY/$REPOSITORY:$IMAGE_TAG"
-
-  # Job 4: Deploy Development Infrastructure (on main branch)
-  deploy-dev-infrastructure:
+  # Job 4: Deploy Development (on main branch)
+  deploy-development:
     runs-on: ubuntu-latest
-    needs: [terraform-validate]
+    needs: [build-and-push]
     if: github.ref == 'refs/heads/main'
+    environment: development
     
     steps:
       - name: Checkout Code
@@ -248,7 +211,9 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 1200
 
+      # Deploy infrastructure if needed
       - name: Terraform Init
         working-directory: ./infra
         run: terraform init
@@ -264,21 +229,54 @@ jobs:
         working-directory: ./infra
         run: terraform apply -auto-approve tfplan
 
-      - name: Output Infrastructure Info
+      # Update ECS services with new images
+      - name: Update ECS Services
+        run: |
+          # Update Airflow service
+          aws ecs update-service \
+            --cluster ${{ env.PROJECT_NAME }}-cluster-dev \
+            --service ${{ env.PROJECT_NAME }}-airflow-dev \
+            --force-new-deployment
+          
+          # Update MLflow service
+          aws ecs update-service \
+            --cluster ${{ env.PROJECT_NAME }}-cluster-dev \
+            --service ${{ env.PROJECT_NAME }}-mlflow-dev \
+            --force-new-deployment
+
+      - name: Wait for Services to Stabilize
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.PROJECT_NAME }}-cluster-dev \
+            --services ${{ env.PROJECT_NAME }}-airflow-dev ${{ env.PROJECT_NAME }}-mlflow-dev
+
+      - name: Run Health Checks
+        run: |
+          # Get ALB DNS name from Terraform output
+          ALB_DNS=$(cd infra && terraform output -raw alb_dns_name)
+          echo "Testing Airflow UI..."
+          curl -f -s -o /dev/null "http://${ALB_DNS}/" || echo "Airflow health check failed"
+          echo "Testing MLflow UI..."
+          curl -f -s -o /dev/null "http://${ALB_DNS}/mlflow/" || echo "MLflow health check failed"
+
+      - name: Output Deployment Info
         working-directory: ./infra
         run: |
-          echo "### Development Infrastructure Deployment Complete 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "### Development Deployment Complete 🚀" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**ECR Repositories:**" >> $GITHUB_STEP_SUMMARY
-          terraform output ecr_repository_urls >> $GITHUB_STEP_SUMMARY || true
+          echo "**Services:**" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Airflow API Server & Scheduler" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ MLflow Server" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Load Balancer DNS:**" >> $GITHUB_STEP_SUMMARY
-          terraform output alb_dns_name >> $GITHUB_STEP_SUMMARY || true
+          echo "**Access URLs:**" >> $GITHUB_STEP_SUMMARY
+          ALB_DNS=$(terraform output -raw alb_dns_name)
+          echo "- Airflow UI: http://${ALB_DNS}/" >> $GITHUB_STEP_SUMMARY
+          echo "- MLflow UI: http://${ALB_DNS}/mlflow/" >> $GITHUB_STEP_SUMMARY
 
-  # Job 5: Deploy Production Infrastructure (on prod branch only)
-  deploy-prod-infrastructure:
+  # Job 5: Deploy Production (on prod branch only)
+  deploy-production:
     runs-on: ubuntu-latest
-    needs: [terraform-validate]
+    needs: [build-and-push]
     if: github.ref == 'refs/heads/prod'
     environment: production
     
@@ -297,6 +295,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 1200
 
       - name: Terraform Init
         working-directory: ./infra
@@ -313,140 +312,35 @@ jobs:
         working-directory: ./infra
         run: terraform apply -auto-approve tfplan
 
-      - name: Output Infrastructure Info
-        working-directory: ./infra
+      - name: Update ECS Services
         run: |
-          echo "### Production Infrastructure Deployment Complete 🚀" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**ECR Repositories:**" >> $GITHUB_STEP_SUMMARY
-          terraform output ecr_repository_urls >> $GITHUB_STEP_SUMMARY || true
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Load Balancer DNS:**" >> $GITHUB_STEP_SUMMARY
-          terraform output alb_dns_name >> $GITHUB_STEP_SUMMARY || true
+          aws ecs update-service \
+            --cluster ${{ env.PROJECT_NAME }}-cluster-prod \
+            --service ${{ env.PROJECT_NAME }}-airflow-prod \
+            --force-new-deployment
+          
+          aws ecs update-service \
+            --cluster ${{ env.PROJECT_NAME }}-cluster-prod \
+            --service ${{ env.PROJECT_NAME }}-mlflow-prod \
+            --force-new-deployment
 
-  # Job 6: Deploy to Development (on main branch)
-  deploy-dev:
-    runs-on: ubuntu-latest
-    needs: [build-and-push, deploy-dev-infrastructure]
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Update ECS Service (Airflow)
+      - name: Wait for Services to Stabilize
         run: |
-          # This would update ECS service to use new image
-          # Implementation depends on ECS task definitions
-          echo "Would update dev ECS service with new Airflow image"
-
-      - name: Update ECS Service (MLflow)
-        run: |
-          # This would update ECS service to use new image
-          echo "Would update dev ECS service with new MLflow image"
-
-      - name: Update Lambda Function
-        run: |
-          # This would update Lambda function to use new image
-          echo "Would update dev Lambda function with new image"
-
-      - name: Run Health Checks
-        run: |
-          echo "Running health checks on dev deployed services..."
-          # Add health check commands here
-
-      - name: Notify Development Deployment Success
-        run: |
-          echo "### Development Deployment Complete ✅" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Services Updated:**" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Airflow (Development)" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ MLflow (Development)" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Lambda Function (Development)" >> $GITHUB_STEP_SUMMARY
-
-  # Job 7: Deploy to Production (on prod branch only)
-  deploy-prod:
-    runs-on: ubuntu-latest
-    needs: [build-and-push, deploy-prod-infrastructure]
-    if: github.ref == 'refs/heads/prod'
-    environment: production
-    
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Update ECS Service (Airflow)
-        run: |
-          echo "Updating production Airflow service..."
-          # Implementation would update ECS service
-
-      - name: Update ECS Service (MLflow)
-        run: |
-          echo "Updating production MLflow service..."
-          # Implementation would update ECS service
-
-      - name: Update Lambda Function
-        run: |
-          echo "Updating production Lambda function..."
-          # Implementation would update Lambda function
+          aws ecs wait services-stable \
+            --cluster ${{ env.PROJECT_NAME }}-cluster-prod \
+            --services ${{ env.PROJECT_NAME }}-airflow-prod ${{ env.PROJECT_NAME }}-mlflow-prod
 
       - name: Run Production Health Checks
         run: |
-          echo "Running production health checks..."
-          # Add comprehensive health checks
+          ALB_DNS=$(cd infra && terraform output -raw alb_dns_name)
+          curl -f -s -o /dev/null "http://${ALB_DNS}/" && echo "✅ Airflow health check passed"
+          curl -f -s -o /dev/null "http://${ALB_DNS}/mlflow/" && echo "✅ MLflow health check passed"
 
-      - name: Notify Production Deployment Success
+      - name: Output Production Deployment Info
+        working-directory: ./infra
         run: |
           echo "### Production Deployment Complete ✅" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Services Updated:**" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Airflow (Production)" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ MLflow (Production)" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Lambda Function (Production)" >> $GITHUB_STEP_SUMMARY
-
-  # Job 8: Deploy to Development Environment (on develop branch)
-  deploy-develop:
-    runs-on: ubuntu-latest
-    needs: [build-and-push]
-    if: github.ref == 'refs/heads/develop'
-    
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Update ECS Service (Airflow)
-        run: |
-          echo "Would update develop environment ECS service with new Airflow image"
-
-      - name: Update ECS Service (MLflow)
-        run: |
-          echo "Would update develop environment ECS service with new MLflow image"
-
-      - name: Update Lambda Function
-        run: |
-          echo "Would update develop environment Lambda function with new image"
-
-      - name: Run Health Checks
-        run: |
-          echo "Running health checks on develop environment services..."
