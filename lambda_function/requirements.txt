@@ -1,5 +1,5 @@
 boto3==1.34.131
-scikit-learn==1.3.2
+scikit-learn==1.7.1
 xgboost==2.0.3
-pandas==2.1.4
+pandas==2.3.1
 numpy==1.24.4
