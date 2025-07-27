@@ -104,7 +104,7 @@ variable "private_subnet_cidrs" {
 variable "rds_postgres_version" {
   description = "PostgreSQL version for RDS"
   type        = string
-  default     = "15.4"
+  default     = "15.8"
 }
 
 variable "rds_instance_class" {
@@ -251,4 +251,16 @@ variable "enable_https" {
   description = "Enable HTTPS with SSL certificate"
   type        = bool
   default     = false  # Set to true for production
+}
+
+variable "create_lambda_function" {
+  description = "Whether to create the Lambda function (requires ECR image to exist first)"
+  type        = bool
+  default     = false
+}
+variable "airflow_fernet_key" {
+  description = "Fernet key for Airflow encryption"
+  type        = string
+  default     = "qtGpTN6fSAYfPL9AbTO4yDao2s1PTdIJmFgpEY3vtFI="
+  sensitive   = true
 }

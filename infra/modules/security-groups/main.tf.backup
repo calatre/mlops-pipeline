@@ -71,15 +71,6 @@ resource "aws_security_group" "ecs" {
     security_groups = [aws_security_group.alb.id]
   }
 
-  # Allow intra-service communication between ECS tasks
-  ingress {
-    description = "All traffic from same security group"
-    from_port   = 0
-    to_port     = 65535
-    protocol    = "tcp"
-    self        = true
-  }
-
   # MLflow UI access from ALB
   ingress {
     description     = "MLflow UI from ALB"

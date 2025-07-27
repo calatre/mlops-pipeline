@@ -1,5 +1,5 @@
 # Based on mlops-zoomcamp-andre Airflow Dockerfile
-FROM apache/airflow:2.6.0-python3.9
+FROM apache/airflow:3.0.3-python3.11
 
 USER root
 

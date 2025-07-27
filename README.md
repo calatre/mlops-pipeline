@@ -488,3 +488,35 @@ Built as a learning exercise inspired by various MLOps courses and tutorials. Sp
 ---
 
 **Remember**: This is a learning project. Keep it simple, keep it cheap, keep learning! 🚀
+
+## Deployment Status (July 27, 2025)
+
+### Infrastructure Deployed
+The core infrastructure has been successfully deployed on AWS:
+
+- **Compute**: ECS Fargate cluster running Airflow and MLflow
+- **Storage**: S3 buckets for data, MLflow artifacts, and monitoring reports
+- **Database**: RDS PostgreSQL for Airflow metadata
+- **Networking**: VPC with public/private subnets, ALB for service access
+- **Shared Storage**: EFS for DAGs and logs
+
+### Service Endpoints
+- **Airflow Web UI**: http://mlops-taxi-prediction-alb-dev-638868392.eu-north-1.elb.amazonaws.com
+- **MLflow Tracking Server**: http://mlops-taxi-prediction-alb-dev-638868392.eu-north-1.elb.amazonaws.com/mlflow
+
+### Docker Images
+All services use custom Docker images pushed to ECR:
+- Airflow: Based on `apache/airflow:3.0.3-python3.11`
+- MLflow: Based on `python:3.11-slim`
+
+### Service Communication
+- Services communicate internally using AWS Service Discovery
+- MLflow endpoint for Airflow: `http://mlflow.mlops-taxi-prediction-dev.local:5000`
+- No external API calls needed between services
+
+### Next Steps
+1. Upload DAGs to EFS through the EC2 development instance
+2. Configure Airflow connections and variables
+3. Test the training pipeline end-to-end
+4. Set up monitoring and alerting
+

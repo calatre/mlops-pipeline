@@ -251,30 +251,30 @@ resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
 }
 
 # Lambda function
-resource "aws_lambda_function" "taxi_predictor" {
-  filename         = "../taxi_predictor.zip"
-  function_name    = "taxi-trip-duration-predictor"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "lambda_function.lambda_handler"
-  source_code_hash = filebase64sha256("../taxi_predictor.zip")
-  runtime         = var.lambda_runtime
-  memory_size     = var.lambda_memory_size
-  timeout         = var.lambda_timeout
-
-  environment {
-    variables = {
-      DATA_STORAGE_BUCKET = aws_s3_bucket.data_storage.bucket
-      MODEL_S3_KEY = "models/latest/combined_model.pkl"
-      PREDICTIONS_S3_BUCKET = aws_s3_bucket.data_storage.bucket
-    }
-  }
-
-  tags = var.tags
-
-  depends_on = [
-    aws_iam_role_policy_attachment.lambda_policy_attachment,
-  ]
-}
+# resource "aws_lambda_function" "taxi_predictor" {
+#   filename         = "../taxi_predictor.zip"
+#   function_name    = "taxi-trip-duration-predictor"
+#   role            = aws_iam_role.lambda_role.arn
+#   handler         = "lambda_function.lambda_handler"
+#   source_code_hash = filebase64sha256("../taxi_predictor.zip")
+#   runtime         = var.lambda_runtime
+#   memory_size     = var.lambda_memory_size
+#   timeout         = var.lambda_timeout
+# 
+#   environment {
+#     variables = {
+#       DATA_STORAGE_BUCKET = aws_s3_bucket.data_storage.bucket
+#       MODEL_S3_KEY = "models/latest/combined_model.pkl"
+#       PREDICTIONS_S3_BUCKET = aws_s3_bucket.data_storage.bucket
+#     }
+#   }
+# 
+#   tags = var.tags
+# 
+#   depends_on = [
+#     aws_iam_role_policy_attachment.lambda_policy_attachment,
+#   ]
+# }
 
 # Lambda event source mapping for Kinesis - commented out until Lambda function is available
 # resource "aws_lambda_event_source_mapping" "kinesis_lambda_mapping" {
@@ -450,6 +450,7 @@ resource "aws_ecs_task_definition" "airflow" {
       ]
       
       essential = true
+      command = ["airflow", "api-server"]
       
       environment = [
         {
@@ -462,7 +463,7 @@ resource "aws_ecs_task_definition" "airflow" {
         },
         {
           name  = "AIRFLOW__CORE__FERNET_KEY"
-          value = ""
+          value = var.airflow_fernet_key
         },
         {
           name  = "AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION"
@@ -494,7 +495,7 @@ resource "aws_ecs_task_definition" "airflow" {
         },
         {
           name  = "MLFLOW_TRACKING_URI"
-          value = "http://${aws_lb.main.dns_name}/mlflow"
+          value = "http://mlflow.${var.project_name}-${var.environment}.local:5000"
         },
         {
           name  = "MLFLOW_BUCKET_NAME"
@@ -540,7 +541,7 @@ resource "aws_ecs_task_definition" "airflow" {
       name  = "airflow-scheduler"
       image = "${module.ecr.airflow_repository_url}:latest"
       
-      command = ["scheduler"]
+      command = ["airflow", "scheduler"]
       essential = true
       
       environment = [
@@ -554,7 +555,7 @@ resource "aws_ecs_task_definition" "airflow" {
         },
         {
           name  = "AIRFLOW__CORE__FERNET_KEY"
-          value = ""
+          value = var.airflow_fernet_key
         },
         {
           name  = "AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION"
@@ -582,7 +583,7 @@ resource "aws_ecs_task_definition" "airflow" {
         },
         {
           name  = "MLFLOW_TRACKING_URI"
-          value = "http://${aws_lb.main.dns_name}/mlflow"
+          value = "http://mlflow.${var.project_name}-${var.environment}.local:5000"
         },
         {
           name  = "MLFLOW_BUCKET_NAME"
@@ -929,10 +930,6 @@ resource "aws_ecs_service" "airflow" {
   health_check_grace_period_seconds = 300
   
   # Deployment configuration for zero-downtime updates
-  deployment_configuration {
-    maximum_percent         = 200
-    minimum_healthy_percent = 100
-  }
   
   tags = var.tags
 }
@@ -959,15 +956,15 @@ resource "aws_ecs_service" "mlflow" {
   
   # Ensure ALB is created before service
   depends_on = [aws_lb_listener.main]
+
+  service_registries {
+    registry_arn = aws_service_discovery_service.mlflow.arn
+  }
   
   # Enable service discovery and health checks
   health_check_grace_period_seconds = 300
   
   # Deployment configuration for zero-downtime updates
-  deployment_configuration {
-    maximum_percent         = 200
-    minimum_healthy_percent = 100
-  }
   
   tags = var.tags
 }
@@ -1096,4 +1093,119 @@ resource "aws_route53_record" "mlflow" {
     zone_id                = aws_lb.main.zone_id
     evaluate_target_health = true
   }
+}
+
+# Service Discovery Namespace
+resource "aws_service_discovery_private_dns_namespace" "main" {
+  name        = "${var.project_name}-${var.environment}.local"
+  description = "Private DNS namespace for service discovery"
+  vpc         = module.vpc.vpc_id
+
+  tags = var.tags
+}
+
+# Service Discovery Service for MLflow
+resource "aws_service_discovery_service" "mlflow" {
+  name = "mlflow"
+
+  dns_config {
+    namespace_id = aws_service_discovery_private_dns_namespace.main.id
+
+    dns_records {
+      ttl  = 10
+      type = "A"
+    }
+
+    routing_policy = "MULTIVALUE"
+  }
+
+  health_check_custom_config {
+    failure_threshold = 1
+  }
+
+  tags = var.tags
+}
+
+# One-time task to initialize Airflow database
+resource "aws_ecs_task_definition" "airflow_db_init" {
+  family                   = "${var.project_name}-airflow-db-init-${var.environment}"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "512"
+  memory                   = "1024"
+  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn           = aws_iam_role.ecs_task.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "airflow-db-init"
+      image     = "${module.ecr.airflow_repository_url}:latest"
+      command   = ["db", "migrate"]
+      essential = true
+      
+      environment = [
+        {
+          name  = "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN"
+          value = "postgresql+psycopg2://${var.airflow_db_username}:${var.airflow_db_password}@${aws_db_instance.airflow.endpoint}/${var.airflow_db_name}"
+        },
+        {
+          name  = "AIRFLOW__CORE__FERNET_KEY"
+          value = var.airflow_fernet_key
+        }
+      ]
+      
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.airflow.name
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "airflow-db-init"
+        }
+      }
+    }
+  ])
+
+  tags = var.tags
+}
+
+# One-time task to create Airflow admin user
+resource "aws_ecs_task_definition" "airflow_create_user" {
+  family                   = "${var.project_name}-airflow-create-user-${var.environment}"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "512"
+  memory                   = "1024"
+  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn           = aws_iam_role.ecs_task.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "airflow-create-user"
+      image     = "${module.ecr.airflow_repository_url}:latest"
+      command   = ["airflow", "users", "create", "-u", "admin", "-f", "Admin", "-l", "Admin", "-r", "Admin", "-e", "admin@example.com", "-p", "admin123"]
+      essential = true
+      
+      environment = [
+        {
+          name  = "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN"
+          value = "postgresql+psycopg2://${var.airflow_db_username}:${var.airflow_db_password}@${aws_db_instance.airflow.endpoint}/${var.airflow_db_name}"
+        },
+        {
+          name  = "AIRFLOW__CORE__FERNET_KEY"
+          value = var.airflow_fernet_key
+        }
+      ]
+      
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.airflow.name
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "airflow-create-user"
+        }
+      }
+    }
+  ])
+
+  tags = var.tags
 }
