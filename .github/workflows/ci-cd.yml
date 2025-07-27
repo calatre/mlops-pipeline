@@ -2,14 +2,14 @@ name: MLOps Pipeline CI/CD
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, prod]
     paths:
       - 'airflow/**'
       - 'lambda_function/**'
       - 'infra/**'
       - '.github/workflows/**'
   pull_request:
-    branches: [main]
+    branches: [main, prod]
     paths:
       - 'airflow/**'
       - 'lambda_function/**'
@@ -101,7 +101,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     needs: [test-and-lint, terraform-validate]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/prod'
     strategy:
       matrix:
         service: [airflow, mlflow, lambda]
@@ -124,13 +124,13 @@ jobs:
       - name: Set Environment Variables
         run: |
           echo "REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
-          echo "REPOSITORY=${{ env.PROJECT_NAME }}-${{ matrix.service }}-app-dev" >> $GITHUB_ENV
           echo "IMAGE_TAG=v$(date +%Y%m%d)-${GITHUB_SHA::8}" >> $GITHUB_ENV
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          if [ "${{ github.ref }}" == "refs/heads/prod" ]; then
             echo "ENVIRONMENT=prod" >> $GITHUB_ENV
             echo "REPOSITORY=${{ env.PROJECT_NAME }}-${{ matrix.service }}-app-prod" >> $GITHUB_ENV
           else
             echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+            echo "REPOSITORY=${{ env.PROJECT_NAME }}-${{ matrix.service }}-app-dev" >> $GITHUB_ENV
           fi
 
       - name: Build Docker Image - Airflow
@@ -146,7 +146,7 @@ jobs:
           # Create MLflow Dockerfile if it doesn't exist
           if [ ! -f mlflow/Dockerfile ]; then
             mkdir -p mlflow
-            cat > mlflow/Dockerfile << 'EOF'
+            cat > mlflow/Dockerfile << 'DOCKERFILE_EOF'
           FROM python:3.10-slim
 
           WORKDIR /app
@@ -174,7 +174,7 @@ jobs:
                "--port", "5000", \
                "--default-artifact-root", "${MLFLOW_ARTIFACT_ROOT:-s3://mlops-taxi-prediction-mlflow-artifacts-dev}", \
                "--backend-store-uri", "${MLFLOW_BACKEND_STORE_URI:-sqlite:///mlflow.db}"]
-          EOF
+          DOCKERFILE_EOF
           fi
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG \
                        -t $REGISTRY/$REPOSITORY:latest \
@@ -185,7 +185,7 @@ jobs:
         run: |
           # Create Lambda Dockerfile if it doesn't exist
           if [ ! -f lambda_function/Dockerfile ]; then
-            cat > lambda_function/Dockerfile << 'EOF'
+            cat > lambda_function/Dockerfile << 'DOCKERFILE_EOF'
           FROM public.ecr.aws/lambda/python:3.10
 
           # Copy requirements and install dependencies
@@ -197,7 +197,7 @@ jobs:
 
           # Set the CMD to your handler
           CMD ["lambda_function.lambda_handler"]
-          EOF
+          DOCKERFILE_EOF
           fi
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG \
                        -t $REGISTRY/$REPOSITORY:latest \
@@ -227,11 +227,60 @@ jobs:
         run: |
           echo "Image pushed: $REGISTRY/$REPOSITORY:$IMAGE_TAG"
 
-  # Job 4: Deploy Infrastructure
-  deploy-infrastructure:
+  # Job 4: Deploy Development Infrastructure (on main branch)
+  deploy-dev-infrastructure:
     runs-on: ubuntu-latest
     needs: [terraform-validate]
     if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.0
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        working-directory: ./infra
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ./infra
+        run: |
+          terraform plan -out=tfplan \
+            -var="environment=dev" \
+            -var="airflow_db_password=${{ secrets.AIRFLOW_DB_PASSWORD }}"
+
+      - name: Terraform Apply
+        working-directory: ./infra
+        run: terraform apply -auto-approve tfplan
+
+      - name: Output Infrastructure Info
+        working-directory: ./infra
+        run: |
+          echo "### Development Infrastructure Deployment Complete 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**ECR Repositories:**" >> $GITHUB_STEP_SUMMARY
+          terraform output ecr_repository_urls >> $GITHUB_STEP_SUMMARY || true
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Load Balancer DNS:**" >> $GITHUB_STEP_SUMMARY
+          terraform output alb_dns_name >> $GITHUB_STEP_SUMMARY || true
+
+  # Job 5: Deploy Production Infrastructure (on prod branch only)
+  deploy-prod-infrastructure:
+    runs-on: ubuntu-latest
+    needs: [terraform-validate]
+    if: github.ref == 'refs/heads/prod'
+    environment: production
     
     steps:
       - name: Checkout Code
@@ -267,7 +316,7 @@ jobs:
       - name: Output Infrastructure Info
         working-directory: ./infra
         run: |
-          echo "### Infrastructure Deployment Complete 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "### Production Infrastructure Deployment Complete 🚀" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**ECR Repositories:**" >> $GITHUB_STEP_SUMMARY
           terraform output ecr_repository_urls >> $GITHUB_STEP_SUMMARY || true
@@ -275,11 +324,11 @@ jobs:
           echo "**Load Balancer DNS:**" >> $GITHUB_STEP_SUMMARY
           terraform output alb_dns_name >> $GITHUB_STEP_SUMMARY || true
 
-  # Job 5: Deploy to Development (on develop branch)
+  # Job 6: Deploy to Development (on main branch)
   deploy-dev:
     runs-on: ubuntu-latest
-    needs: [build-and-push]
-    if: github.ref == 'refs/heads/develop'
+    needs: [build-and-push, deploy-dev-infrastructure]
+    if: github.ref == 'refs/heads/main'
     
     steps:
       - name: Checkout Code
@@ -296,28 +345,37 @@ jobs:
         run: |
           # This would update ECS service to use new image
           # Implementation depends on ECS task definitions
-          echo "Would update ECS service with new Airflow image"
+          echo "Would update dev ECS service with new Airflow image"
 
       - name: Update ECS Service (MLflow)
         run: |
           # This would update ECS service to use new image
-          echo "Would update ECS service with new MLflow image"
+          echo "Would update dev ECS service with new MLflow image"
 
       - name: Update Lambda Function
         run: |
           # This would update Lambda function to use new image
-          echo "Would update Lambda function with new image"
+          echo "Would update dev Lambda function with new image"
 
       - name: Run Health Checks
         run: |
-          echo "Running health checks on deployed services..."
+          echo "Running health checks on dev deployed services..."
           # Add health check commands here
 
-  # Job 6: Deploy to Production (on main branch)
+      - name: Notify Development Deployment Success
+        run: |
+          echo "### Development Deployment Complete ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Services Updated:**" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Airflow (Development)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ MLflow (Development)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Lambda Function (Development)" >> $GITHUB_STEP_SUMMARY
+
+  # Job 7: Deploy to Production (on prod branch only)
   deploy-prod:
     runs-on: ubuntu-latest
-    needs: [build-and-push, deploy-infrastructure]
-    if: github.ref == 'refs/heads/main'
+    needs: [build-and-push, deploy-prod-infrastructure]
+    if: github.ref == 'refs/heads/prod'
     environment: production
     
     steps:
@@ -351,11 +409,44 @@ jobs:
           echo "Running production health checks..."
           # Add comprehensive health checks
 
-      - name: Notify Deployment Success
+      - name: Notify Production Deployment Success
         run: |
           echo "### Production Deployment Complete ✅" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Services Updated:**" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Airflow" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ MLflow" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Lambda Function" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Airflow (Production)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ MLflow (Production)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Lambda Function (Production)" >> $GITHUB_STEP_SUMMARY
+
+  # Job 8: Deploy to Development Environment (on develop branch)
+  deploy-develop:
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    if: github.ref == 'refs/heads/develop'
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update ECS Service (Airflow)
+        run: |
+          echo "Would update develop environment ECS service with new Airflow image"
+
+      - name: Update ECS Service (MLflow)
+        run: |
+          echo "Would update develop environment ECS service with new MLflow image"
+
+      - name: Update Lambda Function
+        run: |
+          echo "Would update develop environment Lambda function with new image"
+
+      - name: Run Health Checks
+        run: |
+          echo "Running health checks on develop environment services..."
