@@ -520,3 +520,37 @@ All services use custom Docker images pushed to ECR:
 3. Test the training pipeline end-to-end
 4. Set up monitoring and alerting
 
+
+## Latest Updates (2025-01-27)
+
+### ✅ Airflow 3.x Migration Completed
+- Upgraded to Apache Airflow 3.0.3 with Python 3.11 support
+- Fixed ECS deployment compatibility issues
+- Updated command structure for Airflow 3.x (`api-server` instead of `webserver`)
+- All services now running successfully on AWS ECS Fargate
+
+### 🚀 Current Service Status
+- **Airflow API Server**: ✅ Healthy and accessible
+- **Airflow Scheduler**: ✅ Running and processing
+- **MLflow Server**: ✅ Operational with artifact storage
+- **PostgreSQL Database**: ✅ Connected and functional
+- **Application Load Balancer**: ✅ Routing traffic correctly
+
+### 🌐 Access URLs
+```
+Airflow Web UI: http://mlops-taxi-prediction-alb-dev-638868392.eu-north-1.elb.amazonaws.com/
+MLflow Web UI:  http://mlops-taxi-prediction-alb-dev-638868392.eu-north-1.elb.amazonaws.com/mlflow/
+```
+
+### 📋 Next Steps
+1. Complete Airflow admin user setup
+2. Deploy and test ML pipeline DAGs
+3. Verify Airflow-MLflow integration
+4. Set up monitoring and alerting
+
+### 🔧 Technical Highlights
+- **Architecture**: Microservices on ECS Fargate with service discovery
+- **Platform**: linux/amd64 containers for optimal compatibility
+- **Networking**: Private subnets with ALB for external access
+- **Storage**: EFS for shared storage, S3 for artifacts, RDS for metadata
+
