@@ -1,0 +1,10 @@
+--- Add these environment variables to the Airflow task definition ---
+
+# In the airflow-webserver container environment section, add:
+{
+  name  = "AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS"
+  value = "airflow:admin"
+}
+
+# This will create user 'airflow' with 'admin' role
+# The password will be auto-generated and saved in the container

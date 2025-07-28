@@ -1,0 +1,179 @@
+/* Custom styles for MLOps Dashboard */
+
+body {
+    background-color: #f8f9fa;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Status Cards */
+.status-card {
+    text-align: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.status-card h6 {
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.status-healthy {
+    color: #28a745;
+}
+
+.status-unhealthy {
+    color: #dc3545;
+}
+
+.status-warning {
+    color: #ffc107;
+}
+
+/* Output Console */
+.output-console {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.875rem;
+    padding: 1rem;
+    border-radius: 4px;
+    min-height: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.output-console .output-entry {
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+.output-console .timestamp {
+    color: #569cd6;
+}
+
+.output-console .prediction {
+    color: #4ec9b0;
+}
+
+.output-console .error {
+    color: #f48771;
+}
+
+/* Activity Log */
+.activity-log {
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 0.875rem;
+}
+
+.log-entry {
+    padding: 0.25rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.log-entry:last-child {
+    border-bottom: none;
+}
+
+.log-entry .timestamp {
+    color: #6c757d;
+    font-family: monospace;
+}
+
+.log-entry.error {
+    color: #dc3545;
+}
+
+.log-entry.success {
+    color: #28a745;
+}
+
+.log-entry.info {
+    color: #17a2b8;
+}
+
+/* Event Options */
+.event-options {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+/* Card Enhancements */
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+}
+
+/* Navigation */
+.navbar-brand {
+    font-weight: 600;
+}
+
+.navbar .nav-link {
+    margin-left: 1rem;
+    transition: opacity 0.3s ease;
+}
+
+.navbar .nav-link:hover {
+    opacity: 0.8;
+}
+
+/* Buttons */
+.btn {
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: #0066cc;
+    border-color: #0066cc;
+}
+
+.btn-primary:hover {
+    background-color: #0052a3;
+    border-color: #0052a3;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .status-card {
+        margin-bottom: 0.5rem;
+    }
+    
+    .output-console {
+        min-height: 200px;
+    }
+}
+
+/* Loading animation */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+.loading {
+    animation: pulse 1.5s infinite;
+}
