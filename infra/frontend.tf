@@ -22,13 +22,13 @@ resource "aws_security_group" "frontend" {
   description = "Security group for frontend EC2 instance"
   vpc_id      = module.vpc.vpc_id
 
-  # Inbound rule: Allow traffic on port 5000 from ALB security group
+  # Inbound rule: Allow traffic on port 5000 from anywhere (for admin access)
   ingress {
-    description     = "Allow traffic from ALB on port 5000"
-    from_port       = 5000
-    to_port         = 5000
-    protocol        = "tcp"
-    security_groups = [module.security_groups.alb_security_group_id]
+    description = "Allow admin access on port 5000"
+    from_port   = 5000
+    to_port     = 5000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # Outbound rule: Allow HTTPS traffic to AWS services
@@ -298,51 +298,7 @@ resource "aws_instance" "frontend" {
   })
 }
 
-# ALB Target Group for Frontend
-resource "aws_lb_target_group" "frontend" {
-  name     = "mlops-frontend-tg-${var.environment}"
-  port     = 5000
-  protocol = "HTTP"
-  vpc_id   = module.vpc.vpc_id
-  
-  health_check {
-    enabled             = true
-    healthy_threshold   = 2
-    interval            = 30
-    matcher             = "200"
-    path                = "/"
-    port                = "traffic-port"
-    protocol            = "HTTP"
-    timeout             = 5
-    unhealthy_threshold = 2
-  }
-  
-  tags = var.tags
-}
-
-# Register EC2 instance with target group
-resource "aws_lb_target_group_attachment" "frontend" {
-  target_group_arn = aws_lb_target_group.frontend.arn
-  target_id        = aws_instance.frontend.id
-  port             = 5000
-}
-
-# ALB Listener Rule for Frontend
-resource "aws_lb_listener_rule" "frontend" {
-  listener_arn = aws_lb_listener.main.arn
-  priority     = 200
-  
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.frontend.arn
-  }
-  
-  condition {
-    path_pattern {
-      values = ["/frontend*", "/"]
-    }
-  }
-}
+# ALB resources removed - using direct EC2 access for simplified architecture
 
 # Output the frontend instance details
 output "frontend_instance_id" {
@@ -360,7 +316,7 @@ output "frontend_instance_public_dns" {
   value       = aws_instance.frontend.public_dns
 }
 
-output "frontend_alb_url" {
-  description = "URL to access the frontend through ALB"
-  value       = "http://${aws_lb.main.dns_name}"
+output "frontend_direct_url" {
+  description = "Direct URL to access the frontend"
+  value       = "http://${aws_instance.frontend.public_ip}:5000"
 }

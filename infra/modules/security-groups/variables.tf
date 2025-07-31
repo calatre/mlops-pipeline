@@ -91,6 +91,38 @@ variable "ssh_allowed_cidrs" {
   default     = []
 }
 
+# ECS Configuration
+variable "create_ecs_sg" {
+  description = "Create ECS security group"
+  type        = bool
+  default     = false
+}
+
+# EC2 Configuration
+variable "create_ec2_sg" {
+  description = "Create EC2 security group"
+  type        = bool
+  default     = false
+}
+
+variable "ec2_custom_ports" {
+  description = "Custom ports to allow on EC2"
+  type = list(object({
+    port     = number
+    protocol = string
+  }))
+  default = [
+    {
+      port     = 8080
+      protocol = "tcp"
+    },
+    {
+      port     = 5000
+      protocol = "tcp"
+    }
+  ]
+}
+
 # Database Admin Access
 variable "db_admin_access_cidrs" {
   description = "CIDR blocks allowed for database admin access"

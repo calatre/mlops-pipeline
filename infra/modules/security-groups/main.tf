@@ -58,6 +58,7 @@ resource "aws_security_group" "alb" {
 
 # ECS Security Group
 resource "aws_security_group" "ecs" {
+  count       = var.create_ecs_sg ? 1 : 0
   name_prefix = "${var.project_name}-ecs-${var.environment}-"
   vpc_id      = var.vpc_id
   description = "Security group for ECS tasks"
@@ -141,34 +142,60 @@ resource "aws_security_group" "ecs" {
   }
 }
 
-# RDS Security Group
-resource "aws_security_group" "rds" {
-  name_prefix = "${var.project_name}-rds-${var.environment}-"
+# RDS Security Group - Removed (RDS no longer used in simplified architecture)
+
+# EFS Security Group - Removed (EFS no longer used in simplified architecture)
+
+# EC2 Security Group
+resource "aws_security_group" "ec2" {
+  count       = var.create_ec2_sg ? 1 : 0
+  name_prefix = "${var.project_name}-ec2-${var.environment}-"
   vpc_id      = var.vpc_id
-  description = "Security group for RDS database"
+  description = "Security group for EC2 instance"
 
-  # PostgreSQL access from ECS only
-  ingress {
-    description     = "PostgreSQL access from ECS"
-    from_port       = var.postgres_port
-    to_port         = var.postgres_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs.id]
-  }
-
-  # Optional: Database access from specific CIDR blocks (for management)
+  # SSH access (if enabled)
   dynamic "ingress" {
-    for_each = var.db_admin_access_cidrs
+    for_each = var.enable_ssh_access ? [1] : []
     content {
-      description = "Database admin access from ${ingress.value}"
-      from_port   = var.postgres_port
-      to_port     = var.postgres_port
+      description = "SSH access"
+      from_port   = 22
+      to_port     = 22
       protocol    = "tcp"
-      cidr_blocks = [ingress.value]
+      cidr_blocks = var.ssh_allowed_cidrs
     }
   }
 
-  # Outbound access (for updates and patches)
+  # Airflow web UI access
+  ingress {
+    description = "Airflow web UI"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # MLflow UI access
+  ingress {
+    description = "MLflow UI"
+    from_port   = 5000
+    to_port     = 5000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Custom application ports
+  dynamic "ingress" {
+    for_each = var.ec2_custom_ports
+    content {
+      description = "Custom port ${ingress.value.port} access"
+      from_port   = ingress.value.port
+      to_port     = ingress.value.port
+      protocol    = ingress.value.protocol
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  }
+
+  # Outbound access to anywhere
   egress {
     description = "All outbound traffic"
     from_port   = 0
@@ -178,54 +205,8 @@ resource "aws_security_group" "rds" {
   }
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-rds-sg-${var.environment}"
-    Type = "Database"
-  })
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-# EFS Security Group
-resource "aws_security_group" "efs" {
-  name_prefix = "${var.project_name}-efs-${var.environment}-"
-  vpc_id      = var.vpc_id
-  description = "Security group for EFS file system"
-
-  # NFS access from ECS
-  ingress {
-    description     = "NFS access from ECS"
-    from_port       = var.nfs_port
-    to_port         = var.nfs_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs.id]
-  }
-
-  # Optional: NFS access from specific CIDR blocks
-  dynamic "ingress" {
-    for_each = var.efs_admin_access_cidrs
-    content {
-      description = "NFS admin access from ${ingress.value}"
-      from_port   = var.nfs_port
-      to_port     = var.nfs_port
-      protocol    = "tcp"
-      cidr_blocks = [ingress.value]
-    }
-  }
-
-  # Outbound access
-  egress {
-    description = "All outbound traffic"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = merge(var.tags, {
-    Name = "${var.project_name}-efs-sg-${var.environment}"
-    Type = "Storage"
+    Name = "${var.project_name}-ec2-sg-${var.environment}"
+    Type = "EC2"
   })
 
   lifecycle {
@@ -296,38 +277,4 @@ resource "aws_security_group" "vpc_endpoints" {
   }
 }
 
-# Redis/ElastiCache Security Group (optional)
-resource "aws_security_group" "redis" {
-  count = var.create_redis_sg ? 1 : 0
-
-  name_prefix = "${var.project_name}-redis-${var.environment}-"
-  vpc_id      = var.vpc_id
-  description = "Security group for Redis/ElastiCache"
-
-  # Redis access from ECS
-  ingress {
-    description     = "Redis access from ECS"
-    from_port       = var.redis_port
-    to_port         = var.redis_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs.id]
-  }
-
-  # Outbound access
-  egress {
-    description = "All outbound traffic"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = merge(var.tags, {
-    Name = "${var.project_name}-redis-sg-${var.environment}"
-    Type = "Cache"
-  })
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
+# Redis/ElastiCache Security Group - Removed (Redis no longer used in simplified architecture)

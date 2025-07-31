@@ -100,163 +100,135 @@ output "ecs_security_group_id" {
   value       = module.security_groups.ecs_security_group_id
 }
 
-output "rds_security_group_id" {
-  description = "ID of the RDS security group"
-  value       = module.security_groups.rds_security_group_id
+output "ec2_security_group_id" {
+  description = "ID of the EC2 security group"
+  value       = module.security_groups.ec2_security_group_id
 }
 
-output "efs_security_group_id" {
-  description = "ID of the EFS security group"
-  value       = module.security_groups.efs_security_group_id
-}
+# RDS and EFS security groups removed (no longer used in simplified architecture)
 
 output "security_groups_summary" {
   description = "Summary of all created security groups"
   value       = module.security_groups.security_groups_summary
 }
 
-# Load Balancer Outputs
-output "alb_arn" {
-  description = "ARN of the Application Load Balancer"
-  value       = aws_lb.main.arn
+# MLOps Orchestration EC2 Instance Outputs
+output "mlops_orchestration_instance_id" {
+  description = "ID of the MLOps Orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.id
 }
 
-output "alb_dns_name" {
-  description = "DNS name of the Application Load Balancer"
-  value       = aws_lb.main.dns_name
+output "mlops_orchestration_public_ip" {
+  description = "Public IP of the MLOps Orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.public_ip
 }
 
-output "alb_zone_id" {
-  description = "Zone ID of the Application Load Balancer"
-  value       = aws_lb.main.zone_id
+output "mlops_orchestration_public_dns" {
+  description = "Public DNS of the MLOps Orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.public_dns
 }
 
-output "alb_target_group_airflow_arn" {
-  description = "ARN of the Airflow target group"
-  value       = aws_lb_target_group.airflow.arn
+output "mlops_orchestration_private_ip" {
+  description = "Private IP of the MLOps Orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.private_ip
 }
 
-output "alb_target_group_mlflow_arn" {
-  description = "ARN of the MLflow target group"
-  value       = aws_lb_target_group.mlflow.arn
+output "mlops_orchestration_private_dns" {
+  description = "Private DNS of the MLOps Orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.private_dns
 }
+
+output "mlops_orchestration_arn" {
+  description = "ARN of the MLOps Orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.arn
+}
+
+output "mlops_orchestration_instance_type" {
+  description = "Instance type of the MLOps Orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.instance_type
+}
+
+output "mlops_orchestration_availability_zone" {
+  description = "Availability zone of the MLOps Orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.availability_zone
+}
+
+output "mlops_orchestration_subnet_id" {
+  description = "Subnet ID of the MLOps Orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.subnet_id
+}
+
+output "mlops_orchestration_vpc_security_group_ids" {
+  description = "Security group IDs of the MLOps Orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.vpc_security_group_ids
+}
+
+output "mlops_orchestration_iam_instance_profile" {
+  description = "IAM instance profile of the MLOps Orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.iam_instance_profile
+}
+
+output "mlops_orchestration_key_name" {
+  description = "Key pair name of the MLOps Orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.key_name
+}
+
+output "mlops_orchestration_root_block_device" {
+  description = "Root block device configuration of the MLOps Orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.root_block_device
+}
+
+output "mlops_orchestration_tags" {
+  description = "Tags of the MLOps Orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.tags
+}
+
+output "mlops_orchestration_summary" {
+  description = "Summary of the MLOps Orchestration EC2 instance"
+  value = {
+    instance_id       = aws_instance.mlops_orchestration.id
+    instance_type     = aws_instance.mlops_orchestration.instance_type
+    public_ip         = aws_instance.mlops_orchestration.public_ip
+    public_dns        = aws_instance.mlops_orchestration.public_dns
+    private_ip        = aws_instance.mlops_orchestration.private_ip
+    private_dns       = aws_instance.mlops_orchestration.private_dns
+    availability_zone = aws_instance.mlops_orchestration.availability_zone
+    subnet_id         = aws_instance.mlops_orchestration.subnet_id
+    security_groups   = aws_instance.mlops_orchestration.vpc_security_group_ids
+    iam_profile       = aws_instance.mlops_orchestration.iam_instance_profile
+    key_name          = aws_instance.mlops_orchestration.key_name
+    state             = aws_instance.mlops_orchestration.instance_state
+  }
+}
+
+output "mlops_orchestration_airflow_url" {
+  description = "URL to access Airflow on the orchestration instance"
+  value       = "http://${aws_instance.mlops_orchestration.public_ip}:8080"
+}
+
+output "mlops_orchestration_mlflow_url" {
+  description = "URL to access MLflow on the orchestration instance"
+  value       = "http://${aws_instance.mlops_orchestration.public_ip}:5000"
+}
+
+output "mlops_orchestration_status_url" {
+  description = "URL to access the status page on the orchestration instance"
+  value       = "http://${aws_instance.mlops_orchestration.public_ip}:8081"
+}
+
+# Load Balancer Outputs - Removed (ALB no longer used in simplified architecture)
 
 # ECS Outputs
-output "ecs_cluster_name" {
-  description = "Name of the ECS cluster"
-  value       = aws_ecs_cluster.main.name
-}
-
-output "ecs_cluster_arn" {
-  description = "ARN of the ECS cluster"
-  value       = aws_ecs_cluster.main.arn
-}
-
-output "ecs_task_execution_role_arn" {
-  description = "ARN of the ECS task execution role"
-  value       = aws_iam_role.ecs_task_execution.arn
-}
-
-output "ecs_task_role_arn" {
-  description = "ARN of the ECS task role"
-  value       = aws_iam_role.ecs_task.arn
-}
 
 # ECS Task Definition Outputs
-output "airflow_task_definition_arn" {
-  description = "ARN of the Airflow ECS task definition"
-  value       = aws_ecs_task_definition.airflow.arn
-}
-
-output "airflow_task_definition_family" {
-  description = "Family name of the Airflow ECS task definition"
-  value       = aws_ecs_task_definition.airflow.family
-}
-
-output "airflow_task_definition_revision" {
-  description = "Revision of the Airflow ECS task definition"
-  value       = aws_ecs_task_definition.airflow.revision
-}
-
-output "mlflow_task_definition_arn" {
-  description = "ARN of the MLflow ECS task definition"
-  value       = aws_ecs_task_definition.mlflow.arn
-}
-
-output "mlflow_task_definition_family" {
-  description = "Family name of the MLflow ECS task definition"
-  value       = aws_ecs_task_definition.mlflow.family
-}
-
-output "mlflow_task_definition_revision" {
-  description = "Revision of the MLflow ECS task definition"
-  value       = aws_ecs_task_definition.mlflow.revision
-}
 
 # EFS Access Points
-output "efs_airflow_access_point_id" {
-  description = "ID of the EFS access point for Airflow"
-  value       = aws_efs_access_point.airflow.id
-}
 
-output "efs_mlflow_access_point_id" {
-  description = "ID of the EFS access point for MLflow"
-  value       = aws_efs_access_point.mlflow.id
-}
+# RDS Outputs - Removed (RDS no longer used in simplified architecture)
 
-# RDS Outputs
-output "rds_endpoint" {
-  description = "RDS instance endpoint"
-  value       = aws_db_instance.airflow.endpoint
-}
-
-output "rds_port" {
-  description = "RDS instance port"
-  value       = aws_db_instance.airflow.port
-}
-
-output "rds_database_name" {
-  description = "RDS database name"
-  value       = aws_db_instance.airflow.db_name
-}
-
-output "rds_username" {
-  description = "RDS master username"
-  value       = aws_db_instance.airflow.username
-  sensitive   = true
-}
-
-# EFS Outputs
-output "efs_file_system_id" {
-  description = "ID of the EFS file system"
-  value       = aws_efs_file_system.main.id
-}
-
-output "efs_file_system_arn" {
-  description = "ARN of the EFS file system"
-  value       = aws_efs_file_system.main.arn
-}
-
-output "efs_dns_name" {
-  description = "DNS name of the EFS file system"
-  value       = aws_efs_file_system.main.dns_name
-}
+# EFS Outputs - Removed (EFS no longer used in simplified architecture)
 
 # CloudWatch Log Groups
-output "cloudwatch_log_group_ecs_cluster" {
-  description = "CloudWatch log group for ECS cluster"
-  value       = aws_cloudwatch_log_group.ecs_cluster.name
-}
-
-output "cloudwatch_log_group_airflow" {
-  description = "CloudWatch log group for Airflow"
-  value       = aws_cloudwatch_log_group.airflow.name
-}
-
-output "cloudwatch_log_group_mlflow" {
-  description = "CloudWatch log group for MLflow"
-  value       = aws_cloudwatch_log_group.mlflow.name
-}
 
 # ECR Repository Outputs for CI/CD
 output "ecr_airflow_repository_url" {
@@ -305,15 +277,11 @@ output "infrastructure_summary" {
     public_subnets       = length(module.vpc.public_subnet_ids)
     private_subnets      = length(module.vpc.private_subnet_ids)
     security_groups      = module.security_groups.security_groups_summary.total_security_groups
-    rds_multi_az         = aws_db_instance.airflow.multi_az
-    efs_encrypted        = aws_efs_file_system.main.encrypted
+    mlops_orchestration_instance_type    = aws_instance.mlops_orchestration.instance_type
+    mlops_orchestration_instance_state   = aws_instance.mlops_orchestration.instance_state
     s3_buckets           = 3
     kinesis_shards       = var.kinesis_shard_count
     ecr_repositories     = 3
-    ecs_task_definitions = 2
-    airflow_cpu          = var.airflow_cpu
-    airflow_memory       = var.airflow_memory
-    mlflow_cpu           = var.mlflow_cpu
-    mlflow_memory        = var.mlflow_memory
+    architecture         = "simplified-ec2-docker-compose"
   }
 }
