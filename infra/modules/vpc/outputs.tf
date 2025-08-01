@@ -94,14 +94,14 @@ output "vpc_flow_log_cloudwatch_log_group" {
 output "network_summary" {
   description = "Summary of network configuration"
   value = {
-    vpc_id                = aws_vpc.main.id
-    vpc_cidr             = aws_vpc.main.cidr_block
-    public_subnets       = length(aws_subnet.public)
-    private_subnets      = length(aws_subnet.private)
-    nat_gateways         = length(aws_nat_gateway.main)
-    availability_zones   = length(data.aws_availability_zones.available.names)
-    single_nat_gateway   = var.single_nat_gateway
-    vpc_flow_logs        = var.enable_vpc_flow_logs
-    s3_endpoint          = var.enable_s3_endpoint
+    vpc_id             = aws_vpc.main.id
+    vpc_cidr           = aws_vpc.main.cidr_block
+    public_subnets     = length(aws_subnet.public)
+    private_subnets    = length(aws_subnet.private)
+    nat_gateways       = length(aws_nat_gateway.main)
+    availability_zones = length(data.aws_availability_zones.available.names)
+    single_nat_gateway = var.single_nat_gateway
+    vpc_flow_logs      = var.enable_vpc_flow_logs
+    s3_endpoint        = var.enable_s3_endpoint
   }
 }

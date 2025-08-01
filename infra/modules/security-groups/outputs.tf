@@ -43,11 +43,11 @@ output "security_groups_summary" {
   description = "Summary of all created security groups"
   value = {
     total_security_groups = (var.create_ec2_sg ? 1 : 0) + (var.create_lambda_sg ? 1 : 0) + (var.create_vpc_endpoints_sg ? 1 : 0)
-    ec2_sg_id            = var.create_ec2_sg ? aws_security_group.ec2[0].id : null
-    lambda_sg_id         = var.create_lambda_sg ? aws_security_group.lambda[0].id : null
-    vpc_endpoints_sg_id  = var.create_vpc_endpoints_sg ? aws_security_group.vpc_endpoints[0].id : null
-    ec2_enabled          = var.create_ec2_sg
-    lambda_enabled       = var.create_lambda_sg
+    ec2_sg_id             = var.create_ec2_sg ? aws_security_group.ec2[0].id : null
+    lambda_sg_id          = var.create_lambda_sg ? aws_security_group.lambda[0].id : null
+    vpc_endpoints_sg_id   = var.create_vpc_endpoints_sg ? aws_security_group.vpc_endpoints[0].id : null
+    ec2_enabled           = var.create_ec2_sg
+    lambda_enabled        = var.create_lambda_sg
     vpc_endpoints_enabled = var.create_vpc_endpoints_sg
   }
 }

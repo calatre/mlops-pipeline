@@ -15,7 +15,7 @@ provider "aws" {
 # S3 Bucket for Terraform state
 resource "aws_s3_bucket" "terraform_state" {
   bucket = "mlops-taxi-prediction-terraform-state"
-  
+
   tags = {
     Name        = "Terraform State Bucket"
     Project     = "MLOps Taxi Prediction"
@@ -55,9 +55,9 @@ resource "aws_s3_bucket_public_access_block" "terraform_state_pab" {
 
 # DynamoDB table for state locking
 resource "aws_dynamodb_table" "terraform_state_lock" {
-  name           = "terraform-state-lock"
-  billing_mode   = "PAY_PER_REQUEST"  # More cost-effective for low usage
-  hash_key       = "LockID"
+  name         = "terraform-state-lock"
+  billing_mode = "PAY_PER_REQUEST" # More cost-effective for low usage
+  hash_key     = "LockID"
 
   attribute {
     name = "LockID"

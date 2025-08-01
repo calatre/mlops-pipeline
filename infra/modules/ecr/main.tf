@@ -15,9 +15,9 @@ resource "aws_ecr_repository" "airflow_app" {
   }
 
   tags = merge(var.tags, {
-    Name        = "${var.project_name}-airflow-app-${var.environment}"
-    Service     = "airflow"
-    Component   = "orchestration"
+    Name      = "${var.project_name}-airflow-app-${var.environment}"
+    Service   = "airflow"
+    Component = "orchestration"
   })
 }
 
@@ -35,9 +35,9 @@ resource "aws_ecr_repository" "mlflow_app" {
   }
 
   tags = merge(var.tags, {
-    Name        = "${var.project_name}-mlflow-app-${var.environment}"
-    Service     = "mlflow"
-    Component   = "ml-tracking"
+    Name      = "${var.project_name}-mlflow-app-${var.environment}"
+    Service   = "mlflow"
+    Component = "ml-tracking"
   })
 }
 
@@ -55,9 +55,9 @@ resource "aws_ecr_repository" "lambda_function" {
   }
 
   tags = merge(var.tags, {
-    Name        = "${var.project_name}-lambda-function-${var.environment}"
-    Service     = "lambda"
-    Component   = "ml-inference"
+    Name      = "${var.project_name}-lambda-function-${var.environment}"
+    Service   = "lambda"
+    Component = "ml-inference"
   })
 }
 
