@@ -1,20 +1,20 @@
 # Frontend EC2 Infrastructure
 
 # Data source to get the latest Amazon Linux 2023 AMI
-data "aws_ami" "amazon_linux_2023" {
-  most_recent = true
-  owners      = ["amazon"]
-
-  filter {
-    name   = "name"
-    values = ["al2023-ami-*-x86_64"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
+#data "aws_ami" "amazon_linux_2023" {
+#  most_recent = true
+#  owners      = ["amazon"]
+#
+#  filter {
+#    name   = "name"
+#    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+#  }
+#
+#  #filter {
+#  #  name   = "virtualization-type"
+#  #  values = ["hvm"]
+#  #}
+#}
 
 # Security Group for Frontend EC2 Instance
 resource "aws_security_group" "frontend" {
@@ -27,6 +27,15 @@ resource "aws_security_group" "frontend" {
     description = "Allow admin access on port 5000"
     from_port   = 5000
     to_port     = 5000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+    # Inbound rule: Allow traffic on port 22 from anywhere (for admin troubleshoot)
+  ingress {
+    description = "Allow admin access on port 22"
+    from_port   = 22
+    to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -52,6 +61,28 @@ resource "aws_security_group" "frontend" {
   tags = merge(var.tags, {
     Name = "${var.project_name}-frontend-sg-${var.environment}"
   })
+}
+
+# Key Pair for EC2 access
+# 1. Generate a new private key using tls_private_key
+resource "tls_private_key" "mlops_key_front" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+# 2. Create the AWS Key Pair using the public key from tls_private_key
+resource "aws_key_pair" "mlops_key_front" {
+  key_name   = "mlops_key_front"
+  public_key = tls_private_key.mlops_key_front.public_key_openssh
+  tags = var.tags
+}
+
+# 3. Store the generated private key in a local file
+resource "local_file" "private_key" {
+  content  = tls_private_key.mlops_key_front.private_key_pem
+  filename = "${path.module}/ssh/mlops_key_front.pem"
+  # Make sure the permissions are set correctly for SSH
+  file_permission = "0600" 
 }
 
 # IAM Role for EC2 Instance
@@ -270,13 +301,14 @@ SERVICE_EOF
 
 # EC2 Instance for Frontend
 resource "aws_instance" "frontend" {
-  ami                    = data.aws_ami.amazon_linux_2023.id
+  ami                    = "ami-0b6acaa45fec15278" #data.aws_ami.amazon_linux_2023.id
   instance_type          = "t3.micro"
   subnet_id              = module.vpc.public_subnet_ids[0] # Using first public subnet
+  key_name               = aws_key_pair.mlops_key_front.key_name
   vpc_security_group_ids = [aws_security_group.frontend.id]
   iam_instance_profile   = aws_iam_instance_profile.frontend.name
 
-  user_data = base64encode(local.user_data_script)
+  user_data = local.user_data_script
 
   # Enable detailed monitoring for cost optimization insights
   monitoring = false # Set to false for cost efficiency

@@ -17,7 +17,7 @@ Simplified AWS infrastructure for MLOps pipeline using EC2 instances with Docker
 - **Kinesis Stream**: Real-time data streaming
 - **Lambda Function**: Model inference (containerized)
 - **VPC**: Isolated network with public/private subnets
-- **ECR**: Container image repositories
+
 
 ### Cost Optimization
 - **EC2 instances** instead of ECS Fargate (~$60-80/month savings)
@@ -68,7 +68,7 @@ infra/
 ├── modules/
 │   ├── vpc/                # VPC and networking
 │   ├── security-groups/    # Security group rules
-│   └── ecr/               # Container registries
+│   # └── ecr/             # (now only for Lambda function image)
 ├── templates/
 │   └── user_data.sh       # EC2 user data script
 └── ssh/

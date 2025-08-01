@@ -53,8 +53,9 @@ module "security_groups" {
   create_ec2_sg = true
 
   # SSH access configuration
-  enable_ssh_access = var.environment != "prod" # Disable SSH in production
-  ssh_allowed_cidrs = var.environment == "prod" ? var.production_allowed_cidrs : ["0.0.0.0/0"]
+  enable_ssh_access =true
+  #enable_ssh_access = var.environment != "prod" # Disable SSH in production
+  #ssh_allowed_cidrs = var.environment == "prod" ? var.production_allowed_cidrs : ["0.0.0.0/0"]
 
   tags = var.tags
 }
@@ -253,8 +254,8 @@ resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
 
 # EC2 Instance for MLOps Orchestration Services (Airflow + MLflow)
 resource "aws_instance" "mlops_orchestration" {
-  ami                    = data.aws_ami.amazon_linux_2023.id
-  instance_type          = "t3.medium"
+  ami                    = "ami-0b6acaa45fec15278" #data.aws_ami.amazon_linux_2023.id
+  instance_type          = "t3.medium" #t3.large or xlarge probably needed
   key_name               = aws_key_pair.mlops_key.key_name
   vpc_security_group_ids = [module.security_groups.ec2_security_group_id]
   subnet_id              = module.vpc.public_subnet_ids[0]
@@ -262,7 +263,7 @@ resource "aws_instance" "mlops_orchestration" {
   iam_instance_profile = aws_iam_instance_profile.mlops_profile.name
 
   root_block_device {
-    volume_size = 20
+    volume_size = 30
     volume_type = "gp3"
     encrypted   = true
   }
@@ -280,7 +281,7 @@ resource "aws_instance" "mlops_orchestration" {
 
 # Key Pair for EC2 access
 resource "aws_key_pair" "mlops_key" {
-  key_name   = "${var.project_name}-mlops-key-${var.environment}"
+  key_name   = "mlops-key"
   public_key = file("${path.module}/ssh/mlops-key.pub")
 
   tags = var.tags

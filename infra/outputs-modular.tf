@@ -190,15 +190,6 @@ output "mlops_orchestration_status_url" {
 }
 
 # ECR Repository Outputs for CI/CD
-output "ecr_airflow_repository_url" {
-  description = "URL of the Airflow ECR repository"
-  value       = module.ecr.airflow_repository_url
-}
-
-output "ecr_mlflow_repository_url" {
-  description = "URL of the MLflow ECR repository"
-  value       = module.ecr.mlflow_repository_url
-}
 
 output "ecr_lambda_repository_url" {
   description = "URL of the Lambda ECR repository"
@@ -213,11 +204,6 @@ output "ecr_repository_names" {
 output "ecr_repository_urls" {
   description = "Map of all ECR repository URLs"
   value       = module.ecr.all_repository_urls
-}
-
-output "ecr_registry_id" {
-  description = "AWS ECR registry ID"
-  value       = module.ecr.registry_id
 }
 
 # Infrastructure Summary

@@ -2,21 +2,21 @@ name: MLOps Pipeline CI/CD
 
 on:
   push:
-    branches: [main, develop, prod]
-    paths:
-      - 'airflow/**'
-      - 'lambda_function/**'
-      - 'mlflow/**'
-      - 'infra/**'
-      - '.github/workflows/**'
-  pull_request:
-    branches: [main, prod]
-    paths:
-      - 'airflow/**'
-      - 'lambda_function/**'
-      - 'mlflow/**'
-      - 'infra/**'
-      - '.github/workflows/**'
+#    branches: [main, develop, prod]
+#    paths:
+#      - 'airflow/**'
+#      - 'lambda_function/**'
+#      - 'mlflow/**'
+#      - 'infra/**'
+#      - '.github/workflows/**'
+#  pull_request:
+#    branches: [main, prod]
+#    paths:
+#      - 'airflow/**'
+#      - 'lambda_function/**'
+#      - 'mlflow/**'
+#      - 'infra/**'
+#      - '.github/workflows/**'
 
 env:
   AWS_REGION: eu-north-1
@@ -108,7 +108,7 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/prod'
     strategy:
       matrix:
-        service: [airflow, mlflow, lambda]
+        service: [lambda]
     
     steps:
       - name: Checkout Code
@@ -140,28 +140,6 @@ jobs:
             echo "ENVIRONMENT=dev" >> $GITHUB_ENV
             echo "REPOSITORY=${{ env.PROJECT_NAME }}-${{ matrix.service }}-app-dev" >> $GITHUB_ENV
           fi
-
-      - name: Build and Push Docker Image - Airflow
-        if: matrix.service == 'airflow'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./airflow
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:latest
-
-      - name: Build and Push Docker Image - MLflow
-        if: matrix.service == 'mlflow'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./mlflow
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:latest
 
       - name: Build and Push Docker Image - Lambda
         if: matrix.service == 'lambda'
