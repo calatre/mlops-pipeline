@@ -9,7 +9,7 @@ terraform {
       version = "~> 5.0"
     }
   }
-  
+
   backend "s3" {
     bucket         = "mlops-taxi-prediction-terraform-state"
     key            = "terraform.tfstate"
@@ -26,49 +26,49 @@ provider "aws" {
 # VPC Module
 module "vpc" {
   source = "./modules/vpc"
-  
-  project_name            = var.project_name
-  environment            = var.environment
-  vpc_cidr               = var.vpc_cidr
-  public_subnet_cidrs    = var.public_subnet_cidrs
-  private_subnet_cidrs   = var.private_subnet_cidrs
-  enable_nat_gateway     = var.enable_nat_gateway
-  single_nat_gateway     = var.single_nat_gateway
-  enable_vpc_flow_logs   = var.enable_vpc_flow_logs
-  enable_s3_endpoint     = var.enable_s3_endpoint
-  
+
+  project_name         = var.project_name
+  environment          = var.environment
+  vpc_cidr             = var.vpc_cidr
+  public_subnet_cidrs  = var.public_subnet_cidrs
+  private_subnet_cidrs = var.private_subnet_cidrs
+  enable_nat_gateway   = var.enable_nat_gateway
+  single_nat_gateway   = var.single_nat_gateway
+  enable_vpc_flow_logs = var.enable_vpc_flow_logs
+  enable_s3_endpoint   = var.enable_s3_endpoint
+
   tags = var.tags
 }
 
 # Security Groups Module
 module "security_groups" {
   source = "./modules/security-groups"
-  
-  project_name               = var.project_name
-  environment               = var.environment
-  vpc_id                    = module.vpc.vpc_id
-  vpc_cidr                  = module.vpc.vpc_cidr_block
-  
+
+  project_name = var.project_name
+  environment  = var.environment
+  vpc_id       = module.vpc.vpc_id
+  vpc_cidr     = module.vpc.vpc_cidr_block
+
   # Enable EC2 security group
-  create_ec2_sg             = true
-  
+  create_ec2_sg = true
+
   # SSH access configuration
-  enable_ssh_access         = var.environment != "prod"  # Disable SSH in production
-  ssh_allowed_cidrs         = var.environment == "prod" ? var.production_allowed_cidrs : ["0.0.0.0/0"]
-  
+  enable_ssh_access = var.environment != "prod" # Disable SSH in production
+  ssh_allowed_cidrs = var.environment == "prod" ? var.production_allowed_cidrs : ["0.0.0.0/0"]
+
   tags = var.tags
 }
 
 # ECR Module
 module "ecr" {
   source = "./modules/ecr"
-  
-  project_name             = var.project_name
-  environment             = var.environment
-  enable_image_scanning   = var.ecr_enable_image_scanning
-  max_image_count         = var.ecr_max_image_count
-  untagged_expiry_days    = var.ecr_untagged_expiry_days
-  
+
+  project_name          = var.project_name
+  environment           = var.environment
+  enable_image_scanning = var.ecr_enable_image_scanning
+  max_image_count       = var.ecr_max_image_count
+  untagged_expiry_days  = var.ecr_untagged_expiry_days
+
   tags = var.tags
 }
 
@@ -113,7 +113,7 @@ resource "aws_s3_bucket_versioning" "monitoring_reports_versioning" {
 # S3 Bucket encryption
 resource "aws_s3_bucket_server_side_encryption_configuration" "mlflow_artifacts_encryption" {
   bucket = aws_s3_bucket.mlflow_artifacts.id
-  
+
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
@@ -123,7 +123,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "mlflow_artifacts_
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "data_storage_encryption" {
   bucket = aws_s3_bucket.data_storage.id
-  
+
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
@@ -133,7 +133,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "data_storage_encr
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "monitoring_reports_encryption" {
   bucket = aws_s3_bucket.monitoring_reports.id
-  
+
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
@@ -144,7 +144,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "monitoring_report
 # S3 Bucket public access block
 resource "aws_s3_bucket_public_access_block" "mlflow_artifacts_pab" {
   bucket = aws_s3_bucket.mlflow_artifacts.id
-  
+
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -153,7 +153,7 @@ resource "aws_s3_bucket_public_access_block" "mlflow_artifacts_pab" {
 
 resource "aws_s3_bucket_public_access_block" "data_storage_pab" {
   bucket = aws_s3_bucket.data_storage.id
-  
+
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -162,7 +162,7 @@ resource "aws_s3_bucket_public_access_block" "data_storage_pab" {
 
 resource "aws_s3_bucket_public_access_block" "monitoring_reports_pab" {
   bucket = aws_s3_bucket.monitoring_reports.id
-  
+
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -174,18 +174,18 @@ resource "aws_kinesis_stream" "taxi_predictions" {
   name             = "taxi-ride-predictions-stream"
   shard_count      = 1
   retention_period = 24
-  
+
   stream_mode_details {
     stream_mode = "PROVISIONED"
   }
-  
+
   tags = var.tags
 }
 
 # Lambda Function Role (for future use)
 resource "aws_iam_role" "lambda_role" {
   name = "${var.project_name}-lambda-role-${var.environment}"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -198,14 +198,14 @@ resource "aws_iam_role" "lambda_role" {
       }
     ]
   })
-  
+
   tags = var.tags
 }
 
 # Lambda Policy
 resource "aws_iam_policy" "lambda_policy" {
   name = "${var.project_name}-lambda-policy-${var.environment}"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -241,7 +241,7 @@ resource "aws_iam_policy" "lambda_policy" {
       }
     ]
   })
-  
+
   tags = var.tags
 }
 
@@ -258,21 +258,21 @@ resource "aws_instance" "mlops_orchestration" {
   key_name               = aws_key_pair.mlops_key.key_name
   vpc_security_group_ids = [module.security_groups.ec2_security_group_id]
   subnet_id              = module.vpc.public_subnet_ids[0]
-  
+
   iam_instance_profile = aws_iam_instance_profile.mlops_profile.name
-  
+
   root_block_device {
     volume_size = 20
     volume_type = "gp3"
     encrypted   = true
   }
-  
+
   user_data = templatefile("${path.module}/templates/user_data.sh", {
     project_name = var.project_name
     environment  = var.environment
     region       = var.aws_region
   })
-  
+
   tags = merge(var.tags, {
     Name = "${var.project_name}-mlops-orchestration-${var.environment}"
   })
@@ -282,14 +282,14 @@ resource "aws_instance" "mlops_orchestration" {
 resource "aws_key_pair" "mlops_key" {
   key_name   = "${var.project_name}-mlops-key-${var.environment}"
   public_key = file("${path.module}/ssh/mlops-key.pub")
-  
+
   tags = var.tags
 }
 
 # IAM Role for EC2
 resource "aws_iam_role" "mlops_ec2_role" {
   name = "${var.project_name}-mlops-ec2-role-${var.environment}"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -302,14 +302,14 @@ resource "aws_iam_role" "mlops_ec2_role" {
       }
     ]
   })
-  
+
   tags = var.tags
 }
 
 # IAM Policy for EC2
 resource "aws_iam_policy" "mlops_ec2_policy" {
   name = "${var.project_name}-mlops-ec2-policy-${var.environment}"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -348,7 +348,7 @@ resource "aws_iam_policy" "mlops_ec2_policy" {
       }
     ]
   })
-  
+
   tags = var.tags
 }
 
@@ -356,7 +356,7 @@ resource "aws_iam_policy" "mlops_ec2_policy" {
 resource "aws_iam_instance_profile" "mlops_profile" {
   name = "${var.project_name}-mlops-profile-${var.environment}"
   role = aws_iam_role.mlops_ec2_role.name
-  
+
   tags = var.tags
 }
 

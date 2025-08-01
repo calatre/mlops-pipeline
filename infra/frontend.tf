@@ -272,26 +272,26 @@ SERVICE_EOF
 resource "aws_instance" "frontend" {
   ami                    = data.aws_ami.amazon_linux_2023.id
   instance_type          = "t3.micro"
-  subnet_id              = module.vpc.public_subnet_ids[0]  # Using first public subnet
+  subnet_id              = module.vpc.public_subnet_ids[0] # Using first public subnet
   vpc_security_group_ids = [aws_security_group.frontend.id]
   iam_instance_profile   = aws_iam_instance_profile.frontend.name
-  
+
   user_data = base64encode(local.user_data_script)
-  
+
   # Enable detailed monitoring for cost optimization insights
-  monitoring = false  # Set to false for cost efficiency
-  
+  monitoring = false # Set to false for cost efficiency
+
   # Use gp3 for better cost efficiency
   root_block_device {
     volume_type = "gp3"
     volume_size = 30
     encrypted   = true
-    
+
     tags = merge(var.tags, {
       Name = "${var.project_name}-frontend-root-volume-${var.environment}"
     })
   }
-  
+
   tags = merge(var.tags, {
     Name = "${var.project_name}-frontend-${var.environment}"
     Type = "Frontend"

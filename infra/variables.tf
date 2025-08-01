@@ -60,7 +60,7 @@ variable "enable_nat_gateway" {
 variable "single_nat_gateway" {
   description = "Use a single NAT Gateway for all private subnets (cost optimization)"
   type        = bool
-  default     = true  # Save $45/month
+  default     = true # Save $45/month
 }
 
 variable "enable_vpc_flow_logs" {
@@ -78,7 +78,7 @@ variable "enable_s3_endpoint" {
 variable "production_allowed_cidrs" {
   description = "CIDR blocks allowed to access services in production"
   type        = list(string)
-  default     = ["0.0.0.0/0"]  # Should be restricted in production
+  default     = ["0.0.0.0/0"] # Should be restricted in production
 }
 
 # VPC Configuration
@@ -110,13 +110,13 @@ variable "ecr_enable_image_scanning" {
 variable "ecr_max_image_count" {
   description = "Maximum number of images to keep in ECR repositories"
   type        = number
-  default     = 10  # Cost optimization for personal project
+  default     = 10 # Cost optimization for personal project
 }
 
 variable "ecr_untagged_expiry_days" {
   description = "Number of days after which untagged images expire"
   type        = number
-  default     = 1  # Clean up untagged images quickly
+  default     = 1 # Clean up untagged images quickly
 }
 
 variable "create_lambda_function" {

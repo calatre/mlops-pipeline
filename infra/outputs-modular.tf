@@ -224,23 +224,23 @@ output "ecr_registry_id" {
 output "infrastructure_summary" {
   description = "High-level summary of the deployed infrastructure"
   value = {
-    project_name          = var.project_name
-    environment          = var.environment
-    region               = var.aws_region
-    vpc_enabled          = true
-    nat_gateways         = length(module.vpc.nat_gateway_ids)
-    single_nat_gateway   = var.single_nat_gateway
-    vpc_flow_logs        = var.enable_vpc_flow_logs
-    s3_endpoint          = var.enable_s3_endpoint
-    availability_zones   = length(module.vpc.availability_zones)
-    public_subnets       = length(module.vpc.public_subnet_ids)
-    private_subnets      = length(module.vpc.private_subnet_ids)
-    security_groups      = module.security_groups.security_groups_summary.total_security_groups
-    mlops_orchestration_instance_type    = aws_instance.mlops_orchestration.instance_type
-    mlops_orchestration_instance_state   = aws_instance.mlops_orchestration.instance_state
-    s3_buckets           = 3
-    kinesis_shards       = var.kinesis_shard_count
-    ecr_repositories     = 3
-    architecture         = "simplified-ec2-docker-compose"
+    project_name                       = var.project_name
+    environment                        = var.environment
+    region                             = var.aws_region
+    vpc_enabled                        = true
+    nat_gateways                       = length(module.vpc.nat_gateway_ids)
+    single_nat_gateway                 = var.single_nat_gateway
+    vpc_flow_logs                      = var.enable_vpc_flow_logs
+    s3_endpoint                        = var.enable_s3_endpoint
+    availability_zones                 = length(module.vpc.availability_zones)
+    public_subnets                     = length(module.vpc.public_subnet_ids)
+    private_subnets                    = length(module.vpc.private_subnet_ids)
+    security_groups                    = module.security_groups.security_groups_summary.total_security_groups
+    mlops_orchestration_instance_type  = aws_instance.mlops_orchestration.instance_type
+    mlops_orchestration_instance_state = aws_instance.mlops_orchestration.instance_state
+    s3_buckets                         = 3
+    kinesis_shards                     = var.kinesis_shard_count
+    ecr_repositories                   = 3
+    architecture                       = "simplified-ec2-docker-compose"
   }
 }
