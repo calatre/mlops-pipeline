@@ -43,7 +43,7 @@ resource "aws_ecr_repository" "mlflow_app" {
 
 # Lambda Function Repository
 resource "aws_ecr_repository" "lambda_function" {
-  name                 = "${var.project_name}-lambda-function-${var.environment}"
+  name                 = "${var.project_name}-lambda-app-${var.environment}"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -55,7 +55,7 @@ resource "aws_ecr_repository" "lambda_function" {
   }
 
   tags = merge(var.tags, {
-    Name      = "${var.project_name}-lambda-function-${var.environment}"
+    Name      = "${var.project_name}-lambda-app-${var.environment}"
     Service   = "lambda"
     Component = "ml-inference"
   })

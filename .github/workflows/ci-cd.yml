@@ -135,10 +135,10 @@ jobs:
           echo "IMAGE_TAG=v$(date +%Y%m%d)-${GITHUB_SHA::8}" >> $GITHUB_ENV
           if [ "${{ github.ref }}" == "refs/heads/prod" ]; then
             echo "ENVIRONMENT=prod" >> $GITHUB_ENV
-            echo "REPOSITORY=${{ env.PROJECT_NAME }}-${{ matrix.service }}-function-prod" >> $GITHUB_ENV
+            echo "REPOSITORY=${{ env.PROJECT_NAME }}-${{ matrix.service }}-app-prod" >> $GITHUB_ENV
           else
             echo "ENVIRONMENT=dev" >> $GITHUB_ENV
-            echo "REPOSITORY=${{ env.PROJECT_NAME }}-${{ matrix.service }}-function-dev" >> $GITHUB_ENV
+            echo "REPOSITORY=${{ env.PROJECT_NAME }}-${{ matrix.service }}-app-dev" >> $GITHUB_ENV
           fi
 
       - name: Build and Push Docker Image - Airflow
