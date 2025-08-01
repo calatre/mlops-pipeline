@@ -222,33 +222,11 @@ jobs:
         working-directory: ./infra
         run: |
           terraform plan -out=tfplan \
-            -var="environment=dev" \
-            -var="airflow_db_password=${{ secrets.AIRFLOW_DB_PASSWORD }}"
+            -var="environment=dev"
 
       - name: Terraform Apply
         working-directory: ./infra
         run: terraform apply -auto-approve tfplan
-
-      # Update ECS services with new images
-      - name: Update ECS Services
-        run: |
-          # Update Airflow service
-          aws ecs update-service \
-            --cluster ${{ env.PROJECT_NAME }}-cluster-dev \
-            --service ${{ env.PROJECT_NAME }}-airflow-dev \
-            --force-new-deployment
-          
-          # Update MLflow service
-          aws ecs update-service \
-            --cluster ${{ env.PROJECT_NAME }}-cluster-dev \
-            --service ${{ env.PROJECT_NAME }}-mlflow-dev \
-            --force-new-deployment
-
-      - name: Wait for Services to Stabilize
-        run: |
-          aws ecs wait services-stable \
-            --cluster ${{ env.PROJECT_NAME }}-cluster-dev \
-            --services ${{ env.PROJECT_NAME }}-airflow-dev ${{ env.PROJECT_NAME }}-mlflow-dev
 
       - name: Run Health Checks
         run: |
