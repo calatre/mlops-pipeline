@@ -11,7 +11,7 @@ variable "environment" {
 }
 
 variable "vpc_id" {
-  description = "ID of the VPC where security groups will be created"
+  description = "ID of the VPC"
   type        = string
 }
 
@@ -20,144 +20,52 @@ variable "vpc_cidr" {
   type        = string
 }
 
-# ALB Configuration
-variable "alb_allowed_cidrs" {
-  description = "CIDR blocks allowed to access ALB"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]  # Allow from anywhere, restrict for production
+variable "tags" {
+  description = "Tags to apply to resources"
+  type        = map(string)
+  default     = {}
 }
 
-variable "alb_custom_ports" {
-  description = "Custom ports to allow on ALB"
-  type = list(object({
-    port        = number
-    protocol    = string
-    cidr_blocks = list(string)
-  }))
-  default = []
-}
-
-# Application Ports
-variable "airflow_port" {
-  description = "Port for Airflow web UI"
-  type        = number
-  default     = 8080
-}
-
-variable "mlflow_port" {
-  description = "Port for MLflow UI"
-  type        = number
-  default     = 5000
-}
-
-variable "postgres_port" {
-  description = "Port for PostgreSQL"
-  type        = number
-  default     = 5432
-}
-
-variable "nfs_port" {
-  description = "Port for NFS (EFS)"
-  type        = number
-  default     = 2049
-}
-
-variable "redis_port" {
-  description = "Port for Redis"
-  type        = number
-  default     = 6379
-}
-
-# ECS Configuration
-variable "ecs_custom_ports" {
-  description = "Custom ports to allow on ECS from ALB"
-  type = list(object({
-    port     = number
-    protocol = string
-  }))
-  default = []
-}
-
-# SSH Access
+# SSH Configuration
 variable "enable_ssh_access" {
-  description = "Enable SSH access to ECS tasks (for debugging)"
+  description = "Enable SSH access to EC2 instances"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "ssh_allowed_cidrs" {
   description = "CIDR blocks allowed for SSH access"
   type        = list(string)
-  default     = []
-}
-
-# ECS Configuration
-variable "create_ecs_sg" {
-  description = "Create ECS security group"
-  type        = bool
-  default     = false
+  default     = ["0.0.0.0/0"]
 }
 
 # EC2 Configuration
 variable "create_ec2_sg" {
   description = "Create EC2 security group"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "ec2_custom_ports" {
   description = "Custom ports to allow on EC2"
   type = list(object({
-    port     = number
-    protocol = string
+    port        = number
+    protocol    = string
+    description = string
   }))
-  default = [
-    {
-      port     = 8080
-      protocol = "tcp"
-    },
-    {
-      port     = 5000
-      protocol = "tcp"
-    }
-  ]
+  default = []
 }
 
-# Database Admin Access
-variable "db_admin_access_cidrs" {
-  description = "CIDR blocks allowed for database admin access"
-  type        = list(string)
-  default     = []
-}
-
-# EFS Admin Access
-variable "efs_admin_access_cidrs" {
-  description = "CIDR blocks allowed for EFS admin access"
-  type        = list(string)
-  default     = []
-}
-
-# Optional Security Groups
+# Lambda Configuration
 variable "create_lambda_sg" {
-  description = "Create security group for Lambda functions"
+  description = "Create Lambda security group"
   type        = bool
   default     = false
 }
 
+# VPC Endpoints Configuration
 variable "create_vpc_endpoints_sg" {
-  description = "Create security group for VPC endpoints"
+  description = "Create VPC endpoints security group"
   type        = bool
   default     = false
-}
-
-variable "create_redis_sg" {
-  description = "Create security group for Redis/ElastiCache"
-  type        = bool
-  default     = false
-}
-
-variable "tags" {
-  description = "Tags to apply to resources"
-  type        = map(string)
-  default     = {}
 }

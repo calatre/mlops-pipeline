@@ -52,9 +52,9 @@ module "security_groups" {
   # Enable EC2 security group
   create_ec2_sg             = true
   
-  # Production security configurations
-  alb_allowed_cidrs         = var.environment == "prod" ? var.production_allowed_cidrs : ["0.0.0.0/0"]
+  # SSH access configuration
   enable_ssh_access         = var.environment != "prod"  # Disable SSH in production
+  ssh_allowed_cidrs         = var.environment == "prod" ? var.production_allowed_cidrs : ["0.0.0.0/0"]
   
   tags = var.tags
 }
@@ -267,11 +267,11 @@ resource "aws_instance" "mlops_orchestration" {
     encrypted   = true
   }
   
-  user_data = base64encode(templatefile("${path.module}/templates/user_data.sh", {
+  user_data = templatefile("${path.module}/templates/user_data.sh", {
     project_name = var.project_name
     environment  = var.environment
     region       = var.aws_region
-  }))
+  })
   
   tags = merge(var.tags, {
     Name = "${var.project_name}-mlops-orchestration-${var.environment}"

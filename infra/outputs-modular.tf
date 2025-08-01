@@ -27,26 +27,11 @@ output "kinesis_stream_arn" {
   value       = aws_kinesis_stream.taxi_predictions.arn
 }
 
-# Lambda Outputs - commented out until Lambda function is available
-# output "lambda_function_name" {
-#   description = "Name of the Lambda function"
-#   value       = aws_lambda_function.taxi_predictor.function_name
-# }
-
-# output "lambda_function_arn" {
-#   description = "ARN of the Lambda function"
-#   value       = aws_lambda_function.taxi_predictor.arn
-# }
-
+# Lambda Outputs
 output "lambda_role_arn" {
   description = "ARN of the Lambda execution role"
   value       = aws_iam_role.lambda_role.arn
 }
-
-# output "cloudwatch_log_group" {
-#   description = "CloudWatch Log Group name for Lambda"
-#   value       = aws_cloudwatch_log_group.lambda_logs.name
-# }
 
 # VPC Module Outputs
 output "vpc_id" {
@@ -90,22 +75,10 @@ output "network_summary" {
 }
 
 # Security Group Outputs
-output "alb_security_group_id" {
-  description = "ID of the ALB security group"
-  value       = module.security_groups.alb_security_group_id
-}
-
-output "ecs_security_group_id" {
-  description = "ID of the ECS security group"
-  value       = module.security_groups.ecs_security_group_id
-}
-
 output "ec2_security_group_id" {
   description = "ID of the EC2 security group"
   value       = module.security_groups.ec2_security_group_id
 }
-
-# RDS and EFS security groups removed (no longer used in simplified architecture)
 
 output "security_groups_summary" {
   description = "Summary of all created security groups"
@@ -215,20 +188,6 @@ output "mlops_orchestration_status_url" {
   description = "URL to access the status page on the orchestration instance"
   value       = "http://${aws_instance.mlops_orchestration.public_ip}:8081"
 }
-
-# Load Balancer Outputs - Removed (ALB no longer used in simplified architecture)
-
-# ECS Outputs
-
-# ECS Task Definition Outputs
-
-# EFS Access Points
-
-# RDS Outputs - Removed (RDS no longer used in simplified architecture)
-
-# EFS Outputs - Removed (EFS no longer used in simplified architecture)
-
-# CloudWatch Log Groups
 
 # ECR Repository Outputs for CI/CD
 output "ecr_airflow_repository_url" {
