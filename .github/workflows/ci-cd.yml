@@ -1,7 +1,7 @@
 name: MLOps Pipeline CI/CD
 
-on:
-  push:
+#on:
+#  push:
 #    branches: [main, develop, prod]
 #    paths:
 #      - 'airflow/**'

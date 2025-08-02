@@ -31,7 +31,7 @@ resource "aws_security_group" "frontend" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-    # Inbound rule: Allow traffic on port 22 from anywhere (for admin troubleshoot)
+  # Inbound rule: Allow traffic on port 22 from anywhere (for admin troubleshoot)
   ingress {
     description = "Allow admin access on port 22"
     from_port   = 22
@@ -74,15 +74,15 @@ resource "tls_private_key" "mlops_key_front" {
 resource "aws_key_pair" "mlops_key_front" {
   key_name   = "mlops_key_front"
   public_key = tls_private_key.mlops_key_front.public_key_openssh
-  tags = var.tags
+  tags       = var.tags
 }
 
 # 3. Store the generated private key in a local file
-resource "local_file" "private_key" {
+resource "local_file" "mlops_key_front_private" {
   content  = tls_private_key.mlops_key_front.private_key_pem
   filename = "${path.module}/ssh/mlops_key_front.pem"
   # Make sure the permissions are set correctly for SSH
-  file_permission = "0600" 
+  file_permission = "0600"
 }
 
 # IAM Role for EC2 Instance

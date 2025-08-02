@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MLOps Pipeline Status</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .service { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .service h3 { margin-top: 0; color: #333; }
+        .service a { color: #0066cc; text-decoration: none; }
+        .service a:hover { text-decoration: underline; }
+        .status { font-weight: bold; }
+        .running { color: green; }
+        .stopped { color: red; }
+    </style>
+</head>
+<body>
+    <h1>MLOps Pipeline Status</h1>
+    <p>This page shows the status of MLOps orchestration services running on this instance.</p>
+    
+    <div class="service">
+        <h3>Airflow (Workflow Orchestration)</h3>
+        <p><span class="status running">● Running</span></p>
+        <p><a href="http://localhost:8080" target="_blank">Airflow Web UI</a></p>
+        <p>Username: airflow | Password: airflow</p>
+    </div>
+    
+    <div class="service">
+        <h3>MLflow (Model Registry)</h3>
+        <p><span class="status running">● Running</span></p>
+        <p><a href="http://localhost:5000" target="_blank">MLflow UI</a></p>
+    </div>
+    
+    <div class="service">
+        <h3>Services Information</h3>
+        <p><strong>PostgreSQL:</strong> Running on port 5432</p>
+        <p><strong>Redis:</strong> Running on port 6379</p>
+        <p><strong>Docker Compose:</strong> Managing all services</p>
+    </div>
+    
+    <div class="service">
+        <h3>Quick Commands</h3>
+        <p><code>docker-compose ps</code> - View service status</p>
+        <p><code>docker-compose logs airflow-apiserver</code> - View Airflow logs</p>
+        <p><code>docker-compose logs mlflow</code> - View MLflow logs</p>
+    </div>
+</body>
+</html>
