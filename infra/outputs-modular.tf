@@ -226,7 +226,7 @@ output "infrastructure_summary" {
     mlops_orchestration_instance_state = aws_instance.mlops_orchestration.instance_state
     s3_buckets                         = 3
     kinesis_shards                     = var.kinesis_shard_count
-    ecr_repositories                   = 3
+    ecr_repositories                   = 1
     architecture                       = "simplified-ec2-docker-compose"
   }
 }

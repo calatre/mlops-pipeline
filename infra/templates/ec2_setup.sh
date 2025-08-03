@@ -27,11 +27,4 @@ yum install -y git python3-pip
 #sudo chown -R ec2-user:ec2-user /opt/mlops
 #cd /opt/mlops
 
-#On Linux, the quick-start needs to know your host user id and needs to have group id set to 0. 
-#Otherwise the files created in dags, logs, config and plugins will be created with root user ownership. 
-#You have to make sure to configure them for the docker-compose:
-#mkdir -p ./dags ./logs ./plugins ./config
-#echo -e "AIRFLOW_UID=$(id -u)" > .env
-
-
-# Upload docker-compose.yml and app files next
+# Upload files next

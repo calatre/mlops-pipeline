@@ -1,0 +1,15 @@
+[Unit]
+Description=MLOps Docker Frontend
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/mlops
+ExecStart=/usr/local/bin/docker up -d
+ExecStop=/usr/local/bin/docker down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

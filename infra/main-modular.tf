@@ -111,36 +111,37 @@ resource "aws_s3_bucket_versioning" "monitoring_reports_versioning" {
   }
 }
 
-# S3 Bucket encryption
-resource "aws_s3_bucket_server_side_encryption_configuration" "mlflow_artifacts_encryption" {
-  bucket = aws_s3_bucket.mlflow_artifacts.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "data_storage_encryption" {
-  bucket = aws_s3_bucket.data_storage.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "monitoring_reports_encryption" {
-  bucket = aws_s3_bucket.monitoring_reports.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
+# S3 Bucket encryption - skipping for simplicity
+# Uncomment if you want to enable encryption
+#resource "aws_s3_bucket_server_side_encryption_configuration" "mlflow_artifacts_encryption" {
+#  bucket = aws_s3_bucket.mlflow_artifacts.id
+#
+#  rule {
+#    apply_server_side_encryption_by_default {
+#      sse_algorithm = "AES256"
+#    }
+#  }
+#}
+#
+#resource "aws_s3_bucket_server_side_encryption_configuration" "data_storage_encryption" {
+#  bucket = aws_s3_bucket.data_storage.id
+#
+#  rule {
+#    apply_server_side_encryption_by_default {
+#      sse_algorithm = "AES256"
+#    }
+#  }
+#}
+#
+#resource "aws_s3_bucket_server_side_encryption_configuration" "monitoring_reports_encryption" {
+#  bucket = aws_s3_bucket.monitoring_reports.id
+#
+#  rule {
+#    apply_server_side_encryption_by_default {
+#      sse_algorithm = "AES256"
+#    }
+#  }
+#}
 
 # S3 Bucket public access block
 resource "aws_s3_bucket_public_access_block" "mlflow_artifacts_pab" {

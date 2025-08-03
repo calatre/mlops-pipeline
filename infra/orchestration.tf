@@ -22,6 +22,7 @@ resource "local_file" "mlops_key_orch_private" {
   file_permission = "0600"
 }
 
+# Data source for Amazon Linux 2023 AMI is defined in frontend.tf
 resource "aws_instance" "mlops_orchestration" {
   ami                    = "ami-0b6acaa45fec15278" #data.aws_ami.amazon_linux_2023.id
   instance_type          = "t3.large"              #t3.large or xlarge probably needed
@@ -37,7 +38,7 @@ resource "aws_instance" "mlops_orchestration" {
     encrypted   = true
   }
 
-  user_data = templatefile("${path.module}/templates/orch_setup.sh", {
+  user_data = templatefile("${path.module}/templates/ec2_setup.sh", {
     project_name = var.project_name
     environment  = var.environment
     region       = var.aws_region
@@ -54,16 +55,18 @@ resource "aws_instance" "mlops_orchestration" {
     ]
   }
 
+  #On Linux, the quick-start needs to know your host user id and needs to have group id set to 0. 
+  #Otherwise the files created in dags, logs, config and plugins will be created with root user ownership. 
+  #You have to make sure to configure them for the docker-compose:
+  #mkdir -p ./dags ./logs ./plugins ./config
+  #echo -e "AIRFLOW_UID=$(id -u)" > .env
+
+
   # Provisioner to copy the entire app directory
   provisioner "file" {
     source      = "${path.module}/../orchestration/" # Copy the contents of the local 'orchestration' directory
     destination = "/opt/mlops"                       # To the remote directory
   }
-
-
-  tags = merge(var.tags, {
-    Name = "${var.project_name}-mlops-orchestration-${var.environment}"
-  })
 
   # Provisioner to run docker-compose and status page after files are copied
   provisioner "remote-exec" {
@@ -76,6 +79,7 @@ resource "aws_instance" "mlops_orchestration" {
       "nohup python3 -m http.server 8081 --directory /opt/mlops > /dev/null 2>&1 &"
     ]
   }
+
   # Connection block tells Terraform how to SSH into the instance
   connection {
     type        = "ssh"
@@ -83,14 +87,13 @@ resource "aws_instance" "mlops_orchestration" {
     private_key = file(local_file.mlops_key_orch_private.filename)
     host        = self.public_ip
   }
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-mlops-orchestration-${var.environment}"
+  })
 }
 
 
-
-output "instance_public_ip" {
-  value       = aws_instance.mlops_orchestration.public_ip
-  description = "Public IP address of the EC2 instance."
-}
 
 # IAM Role for EC2
 resource "aws_iam_role" "mlops_ec2_role" {
@@ -172,4 +175,25 @@ resource "aws_iam_role_policy_attachment" "mlops_ec2_policy_attachment" {
   policy_arn = aws_iam_policy.mlops_ec2_policy.arn
 }
 
-# Data source for Amazon Linux 2023 AMI is defined in frontend.tf
+
+
+# Output the orchestration instance details
+output "orchestration_instance_id" {
+  description = "ID of the orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.id
+}
+
+output "orchestration_instance_public_ip" {
+  value       = aws_instance.mlops_orchestration.public_ip
+  description = "Public IP address of the orchestration EC2 instance."
+}
+
+output "orchestration_instance_public_dns" {
+  description = "Public DNS of the orchestration EC2 instance"
+  value       = aws_instance.mlops_orchestration.public_dns
+}
+
+output "orchestration_direct_url" {
+  description = "Direct URL to access the orchestration"
+  value       = "http://${aws_instance.mlops_orchestration.public_ip}:5000"
+}
