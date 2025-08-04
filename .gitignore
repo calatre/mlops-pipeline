@@ -219,4 +219,4 @@ taxi_predictor.zip
 *.zip
 
 # SSH keys
-ssh/*
+infra/ssh/**
