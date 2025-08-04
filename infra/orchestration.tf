@@ -68,12 +68,12 @@ resource "aws_instance" "mlops_orchestration" {
     destination = "/opt/mlops"                       # To the remote directory
   }
 
-  # Provisioner to run docker-compose and status page after files are copied
+  # Provisioner to run docker-compose and status page
   provisioner "remote-exec" {
     inline = [
       "cd /opt/mlops",
-      "sleep 30 && sudo /usr/local/bin/docker-compose up airflow-init",
-      "sleep 30 && sudo /usr/local/bin/docker-compose up -d",
+      "sudo /usr/local/bin/docker-compose up airflow-init",
+      "sudo /usr/local/bin/docker-compose up -d",
       "sudo cp /opt/mlops/mlops-docker-compose.service /etc/systemd/system/mlops-docker-compose.service",
       "sudo systemctl enable mlops-docker-compose.service",
       "nohup python3 -m http.server 8081 --directory /opt/mlops > /dev/null 2>&1 &"

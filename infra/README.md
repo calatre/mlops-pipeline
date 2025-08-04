@@ -7,7 +7,7 @@ Simplified AWS infrastructure for MLOps pipeline using EC2 instances with Docker
 
 ### Components
 - **Frontend EC2**: t3.micro instance running Flask admin GUI (port 5000)
-- **Orchestration EC2**: t3.medium instance running Docker Compose with:
+- **Orchestration EC2**: t3.large (or xlarge, depending how demanding are your dags) instance running Docker Compose with:
   - Airflow (port 8080)
   - MLflow (port 5000)
   - PostgreSQL (port 5432)
@@ -18,20 +18,12 @@ Simplified AWS infrastructure for MLOps pipeline using EC2 instances with Docker
 - **Lambda Function**: Model inference (containerized)
 - **VPC**: Isolated network with public/private subnets
 
-
-### Cost Optimization
-- **EC2 instances** instead of ECS Fargate (~$60-80/month savings)
-- **Containerized PostgreSQL** instead of RDS (~$30-40/month savings)
-- **Direct EC2 access** instead of ALB (~$20-30/month savings)
-- **Local Docker volumes** instead of EFS (~$15-20/month savings)
-- **Single NAT Gateway** for cost efficiency
-
 ## Deployment
 
 ### Prerequisites
 - AWS CLI configured
 - Terraform installed
-- SSH key pair for EC2 access
+- SSH key pair for EC2 access (terraform generates them in the ssh subfolder when provisioning the instances)
 
 ### Quick Start
 ```bash
@@ -72,17 +64,17 @@ infra/
 ├── templates/
 │   └── user_data.sh       # EC2 user data script
 └── ssh/
-    └── mlops-key.pub      # SSH public key
+    └── mlops-key-[front/orch].pem      # SSH private keys
 ```
 
 ## Security
 - **VPC isolation** with public/private subnets
 - **Security groups** with least-privilege access
 - **IAM roles** for EC2 instances
-- **Encrypted storage** for S3 and EBS volumes
+- **(Optional)Encrypted storage** for S3 and EBS volumes
 
 ## Monitoring
-- **CloudWatch logs** for application monitoring
+- **(optional)CloudWatch logs** for application monitoring
 - **S3 access logs** for storage monitoring
 - **EC2 instance metrics** for resource monitoring
 
@@ -92,13 +84,6 @@ infra/
 - **S3 storage**: ~$5-10
 - **Kinesis stream**: ~$5-10
 - **Other services**: ~$5-10
-
-## Learning Focus
-This infrastructure prioritizes:
-- **Simplicity** over enterprise complexity
-- **Cost efficiency** over managed services
-- **Educational value** over production readiness
-- **Docker Compose** familiarity over cloud-native patterns
 
 ## Troubleshooting
 - Check EC2 instance status in AWS Console

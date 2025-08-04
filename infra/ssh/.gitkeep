@@ -1,0 +1,2 @@
+# This file ensures the ssh directory structure is preserved in git
+# while ignoring actual SSH key files for security reasons

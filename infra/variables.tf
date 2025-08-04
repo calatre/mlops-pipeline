@@ -131,3 +131,4 @@ variable "airflow_fernet_key" {
   default     = "qtGpTN6fSAYfPL9AbTO4yDao2s1PTdIJmFgpEY3vtFI="
   sensitive   = true
 }
+

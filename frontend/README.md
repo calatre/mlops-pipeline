@@ -2,7 +2,11 @@
 
 A simple, clean web interface for the MLOps taxi trip duration prediction pipeline.
 
-## Features
+This is intended to be a simple entry point for the full pipeline demo.
+
+This ends up inside a docker container.
+
+## 📃 Features
 
 - **Pipeline Health Status**: Real-time monitoring of Airflow, MLflow, Kinesis, and Lambda services
 - **Quick Links**: Direct access to Airflow UI and MLflow UI
@@ -12,14 +16,14 @@ A simple, clean web interface for the MLOps taxi trip duration prediction pipeli
 - **Pipeline Output Monitoring**: View real-time Kinesis stream results
 - **Activity Logging**: Track all dashboard activities
 
-## Technology Stack
+## 🛠️ Technology Stack
 
 - **Backend**: Flask 3.0 (Python)
 - **Frontend**: Bootstrap 5.3, Vanilla JavaScript
 - **AWS Integration**: Boto3 for Kinesis and S3
 - **Styling**: Simple, pedagogical design with Bootstrap
 
-## Setup
+## 🚀 Setup
 
 1. Install dependencies:
    ```bash
@@ -37,7 +41,7 @@ A simple, clean web interface for the MLOps taxi trip duration prediction pipeli
 
 4. Access at http://localhost:5000
 
-## Configuration
+## 🔧 Configuration
 
 The application uses environment variables for configuration:
 
@@ -46,7 +50,7 @@ The application uses environment variables for configuration:
 - `DATA_STORAGE_BUCKET`: S3 bucket for data storage
 - `LAMBDA_FUNCTION_NAME`: Lambda function name
 
-## API Endpoints
+## 🌐 API Endpoints
 
 - `GET /`: Main dashboard
 - `GET /api/health`: Application health check
@@ -54,11 +58,3 @@ The application uses environment variables for configuration:
 - `GET /api/health/lambda`: Lambda function health
 - `POST /api/events`: Submit event to Kinesis
 - `GET /api/kinesis/records`: Get recent stream records
-
-## Design Philosophy
-
-This dashboard prioritizes:
-- **Simplicity**: Clean, intuitive interface
-- **Pedagogy**: Clear, educational implementation
-- **Cost-efficiency**: Minimal resource usage
-- **Functionality**: All essential features without complexity

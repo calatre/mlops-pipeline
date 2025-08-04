@@ -255,11 +255,25 @@ resource "aws_instance" "frontend" {
     ]
   }
 
-  # Provisioner to run docker after files are copied
+  # Provisioner to run docker after files are copied with readiness check
   provisioner "remote-exec" {
     inline = [
       "cd /opt/mlops",
-      "sleep 30 && sudo /usr/bin/docker build -t mlops-frontend .",
+      "# Docker readiness check",
+      "MAX_ATTEMPTS=30",
+      "ATTEMPT=0",
+      "while ! sudo docker info >/dev/null 2>&1; do",
+      "  ATTEMPT=$((ATTEMPT+1))",
+      "  if [ $ATTEMPT -ge $MAX_ATTEMPTS ]; then",
+      "    echo 'Docker daemon failed to start'",
+      "    exit 1",
+      "  fi",
+      "  echo 'Waiting for Docker daemon...'",
+      "  sleep 2",
+      "done",
+      "echo 'Docker daemon is ready'",
+      "# Now build the Docker image",
+      "sudo /usr/bin/docker build -t mlops-frontend .",
       #"docker run -d --restart=always -p 5000:5000 --name mlops-frontend mlops-frontend",
       "sudo cp /opt/mlops/mlops-docker-frontend.service /etc/systemd/system/mlops-docker-frontend.service",
       "sudo systemctl enable mlops-docker-frontend.service",

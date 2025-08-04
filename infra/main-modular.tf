@@ -188,14 +188,15 @@ resource "aws_kinesis_stream" "taxi_predictions" {
 resource "null_resource" "build_lambda_container" {
   # Triggers rebuild when Lambda source code or build script changes
   triggers = {
-    lambda_source_hash = filemd5("${path.root}/lambda_function/lambda_function.py")
-    dockerfile_hash    = filemd5("${path.root}/lambda_function/Dockerfile")
-    requirements_hash  = filemd5("${path.root}/lambda_function/requirements.txt")
-    build_script_hash  = filemd5("${path.root}/scripts/build_lambda.sh")
+    lambda_source_hash = filemd5("${path.module}/../lambda_function/lambda_function.py")
+    dockerfile_hash    = filemd5("${path.module}/../lambda_function/Dockerfile")
+    requirements_hash  = filemd5("${path.module}/../lambda_function/requirements.txt")
+    build_script_hash  = filemd5("${path.module}/../scripts/build_lambda.sh")
   }
 
   provisioner "local-exec" {
-    command = "${path.root}/scripts/build_lambda.sh"
+    command     = "./scripts/build_lambda.sh"
+    working_dir = "${path.module}/.."
   }
 
   depends_on = [

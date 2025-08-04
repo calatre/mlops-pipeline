@@ -218,5 +218,8 @@ tfplan-*
 taxi_predictor.zip
 *.zip
 
-# SSH keys
-infra/ssh/**
+# SSH keys - ignore actual key files but keep directory structure
+infra/ssh/*.pem
+infra/ssh/*.key
+infra/ssh/id_*
+infra/ssh/*.pub

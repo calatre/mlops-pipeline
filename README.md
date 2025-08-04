@@ -1,16 +1,27 @@
 # NYC Taxi Trip Duration Prediction - MLOps Learning Project
 
-A **personal learning project** for building an MLOps pipeline that predicts NYC taxi trip durations. This project emphasizes simplicity, cost-efficiency, and practical learning over enterprise-grade complexity.
+Hi there!
+
+If you're coming from MLOps Zoomcamp, here's the current status, important notes and things to check:
+- I'm not yet versed in ML, so instead of making my own model just reused that part from the course. Focused on using my background of sys admin to try and create an "easy setup" pipeline.
+- Used plenty of AU until it blew in my face and then been debugging manually. Some stuff (like the containers inside ec2) sometimes need to be started manually
+- Infra as code (terraform) deploying on cloud (AWS - you will need your credentials to check yourself, or ping me in the course Slack (André Calatré) if you want me to provision the infra momentarily)
+- Serving mode as streaming or batch (airflow)
+- There's CI CD (github actions) but no tests yet.
+- Feel free to check more recent commits (maybe I fix things!)
+
+
+**Personal learning project** for building an MLOps pipeline that predicts NYC taxi trip durations. This project emphasizes simplicity, cost-efficiency, and practical learning over enterprise-grade complexity.
 
 ## 📋 Project Status
 
-**Infrastructure Complete - Ready for AWS Deployment**
-- ✅ All Terraform modules defined and tested
-- ✅ ECS Fargate task definitions for Airflow and MLflow
-- ✅ Lambda deployment package created (392MB)
-- ✅ Cost-optimized for ~$90-120/month
+**Infrastructure Configured - Ready for Full Deployment**
+- ✅ Terraform configuration validated and tested
+- ✅ EC2-based Docker Compose setup (cost-optimized)
+- ✅ Lambda container deployment ready
+- ⚠️ **Note**: Most resources are configured but not currently deployed, or still buggy
 
-## 🏗️ Architecture Overview
+## 🏗️ Current Architecture (Simplified & Cost-Optimized)
 
 ```mermaid
 graph TB
@@ -19,33 +30,32 @@ graph TB
             S3A[S3: MLflow Artifacts]
             S3B[S3: Data Storage]
             S3C[S3: Monitoring Reports]
-            EFS[EFS: Shared Storage]
         end
         
         subgraph "Compute Layer"
-            ECS[ECS Fargate: Airflow + MLflow]
+            EC2F[EC2: Frontend Dashboard]
+            EC2O[EC2: Orchestration\nAirflow + MLflow + PostgreSQL]
             Lambda[Lambda: Predictions]
-            RDS[RDS PostgreSQL]
         end
         
         subgraph "Networking"
-            ALB[Application Load Balancer]
+            VPC[VPC with Security Groups]
             KDS[Kinesis Data Stream]
         end
         
-        KDS -- Lambda
-        Lambda -- S3B
-        ECS -- RDS
-        ECS -- S3A
-        ECS -- S3B
-        ECS -- S3C
-        ECS -- EFS
-        ALB -- ECS
+        KDS --> Lambda
+        Lambda --> S3B
+        EC2O --> S3A
+        EC2O --> S3B
+        EC2O --> S3C
+        EC2F --> KDS
+        EC2F --> EC2O
     end
     
     style KDS fill:#ff9800
     style Lambda fill:#4caf50
-    style ECS fill:#2196f3
+    style EC2F fill:#e3f2fd
+    style EC2O fill:#2196f3
 ```
 
 ## 🏗️ Architecture Overview
@@ -386,13 +396,14 @@ aws logs tail /aws/lambda/taxi-trip-duration-predictor --follow
 
 This project is optimized for learning with minimal AWS costs:
 
+- **EC2 instances instead of ECS Fargate**: Saves ~$60-80/month
+- **Containerized PostgreSQL instead of RDS**: Saves ~$30-40/month  
+- **Direct EC2 access instead of ALB**: Saves ~$20-30/month
+- **Local Docker volumes instead of EFS**: Saves ~$15-20/month
 - **Single NAT Gateway**: Saves $45/month
-- **EFS Bursting Mode**: Saves $15/month
-- **ARM-based RDS**: db.t4g.micro for cost efficiency
-- **FARGATE_SPOT**: For non-critical workloads
 - **14-day log retention**: Reduces CloudWatch costs
 
-**Estimated Monthly Cost**: $90-120
+**Estimated Monthly Cost**: $30-50 (down from $90-120)
 
 ## 📁 Project Structure
 
