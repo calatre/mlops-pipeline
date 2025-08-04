@@ -25,7 +25,7 @@ resource "local_file" "mlops_key_orch_private" {
 # Data source for Amazon Linux 2023 AMI is defined in frontend.tf
 resource "aws_instance" "mlops_orchestration" {
   ami                    = "ami-0b6acaa45fec15278" #data.aws_ami.amazon_linux_2023.id
-  instance_type          = "t3.xlarge"              #t3.large or xlarge probably needed
+  instance_type          = "t3.large"              #t3.large or xlarge probably needed
   key_name               = aws_key_pair.mlops_key_orch.key_name
   vpc_security_group_ids = [module.security_groups.ec2_security_group_id]
   subnet_id              = module.vpc.public_subnet_ids[0]
@@ -72,8 +72,8 @@ resource "aws_instance" "mlops_orchestration" {
   provisioner "remote-exec" {
     inline = [
       "cd /opt/mlops",
-      "/usr/local/bin/docker-compose up airflow-init",
-      "/usr/local/bin/docker-compose up -d",
+      "sleep 30 && sudo /usr/local/bin/docker-compose up airflow-init",
+      "sleep 30 && sudo /usr/local/bin/docker-compose up -d",
       "sudo cp /opt/mlops/mlops-docker-compose.service /etc/systemd/system/mlops-docker-compose.service",
       "sudo systemctl enable mlops-docker-compose.service",
       "nohup python3 -m http.server 8081 --directory /opt/mlops > /dev/null 2>&1 &"

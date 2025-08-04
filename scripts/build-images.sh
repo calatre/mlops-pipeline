@@ -138,46 +138,22 @@ EOF
 
 # Build Lambda image
 build_lambda() {
-    log_info "Building Lambda image..."
-    
-    # Create Lambda Dockerfile if it doesn't exist
-    if [ ! -f "lambda_function/Dockerfile" ]; then
-        log_info "Creating Lambda Dockerfile..."
-        cat > lambda_function/Dockerfile << 'EOF'
-FROM public.ecr.aws/lambda/python:3.10
+    log_info "Building Lambda Docker image..."
 
-# Copy requirements and install dependencies
-COPY requirements.txt ${LAMBDA_TASK_ROOT}
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy function code
-COPY lambda_function.py ${LAMBDA_TASK_ROOT}
-COPY *.py ${LAMBDA_TASK_ROOT}
-
-# Set the CMD to your handler
-CMD ["lambda_function.lambda_handler"]
-EOF
-    fi
-    
-    if [ ! -f "lambda_function/requirements.txt" ]; then
-        log_warning "lambda_function/requirements.txt not found, creating basic requirements..."
-        cat > lambda_function/requirements.txt << 'EOF'
-boto3
-pandas
-scikit-learn
-xgboost
-numpy
-EOF
-    fi
-    
     docker build \
+        --platform linux/amd64 \
         -t "${PROJECT_NAME}-lambda:${IMAGE_TAG}" \
         -t "${PROJECT_NAME}-lambda:latest" \
         --build-arg BUILD_DATE="${BUILD_DATE}" \
         --build-arg GIT_COMMIT="${GIT_COMMIT}" \
         ./lambda_function/
-    
-    log_success "Lambda image built successfully"
+
+    if [ $? -eq 0 ]; then
+        log_success "Lambda Docker image built successfully"
+    else
+        log_error "Failed to build Lambda Docker image"
+        exit 1
+    fi
 }
 
 # Push to ECR

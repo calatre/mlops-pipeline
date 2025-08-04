@@ -18,10 +18,10 @@
                 <i class="bi bi-diagram-3"></i> MLOps Pipeline Dashboard
             </a>
             <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/airflow" target="_blank">
+                <a class="nav-link" href="http://{{ orchestration_ip }}:8080" target="_blank">
                     <i class="bi bi-wind"></i> Airflow UI
                 </a>
-                <a class="nav-link" href="/mlflow" target="_blank">
+                <a class="nav-link" href="http://{{ orchestration_ip }}:5000" target="_blank">
                     <i class="bi bi-graph-up"></i> MLflow UI
                 </a>
             </div>
@@ -128,72 +128,7 @@
                                 <small class="form-text text-muted">Index of the record to load from the parquet file</small>
                             </div>
                         </div>
-                        <div id="s3-options" class="event-options" style="display: none;">
-                            <div class="mb-3">
-                                <label for="s3FileSelect" class="form-label">Select Parquet File</label>
-                                <select class="form-select" id="s3FileSelect">
-                                    <option value="">Loading files...</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="recordIndex" class="form-label">Record Index</label>
-                                <input type="number" class="form-control" id="recordIndex" value="0" min="0" placeholder="0">
-                                <small class="form-text text-muted">Index of the record to load from the parquet file</small>
-                            </div>
-                        </div>
-                        <div id="s3-options" class="event-options" style="display: none;">
-                            <div class="mb-3">
-                                <label for="s3FileSelect" class="form-label">Select Parquet File</label>
-                                <select class="form-select" id="s3FileSelect">
-                                    <option value="">Loading files...</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="recordIndex" class="form-label">Record Index</label>
-                                <input type="number" class="form-control" id="recordIndex" value="0" min="0" placeholder="0">
-                                <small class="form-text text-muted">Index of the record to load from the parquet file</small>
-                            </div>
-                        </div>
-                        <div id="s3-options" class="event-options" style="display: none;">
-                            <div class="mb-3">
-                                <label for="s3FileSelect" class="form-label">Select Parquet File</label>
-                                <select class="form-select" id="s3FileSelect">
-                                    <option value="">Loading files...</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="recordIndex" class="form-label">Record Index</label>
-                                <input type="number" class="form-control" id="recordIndex" value="0" min="0" placeholder="0">
-                                <small class="form-text text-muted">Index of the record to load from the parquet file</small>
-                            </div>
-                        </div>
-                        <div id="s3-options" class="event-options" style="display: none;">
-                            <div class="mb-3">
-                                <label for="s3FileSelect" class="form-label">Select Parquet File</label>
-                                <select class="form-select" id="s3FileSelect">
-                                    <option value="">Loading files...</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="recordIndex" class="form-label">Record Index</label>
-                                <input type="number" class="form-control" id="recordIndex" value="0" min="0" placeholder="0">
-                                <small class="form-text text-muted">Index of the record to load from the parquet file</small>
-                            </div>
-                        </div>
-                        <div id="s3-options" class="event-options" style="display: none;">
-                            <div class="mb-3">
-                                <label for="s3FileSelect" class="form-label">Select Parquet File</label>
-                                <select class="form-select" id="s3FileSelect">
-                                    <option value="">Loading files...</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="recordIndex" class="form-label">Record Index</label>
-                                <input type="number" class="form-control" id="recordIndex" value="0" min="0" placeholder="0">
-                                <small class="form-text text-muted">Index of the record to load from the parquet file</small>
-                            </div>
-                        </div>
-                        
+
                         <button id="send-event-btn" class="btn btn-primary w-100">
                             <i class="bi bi-send-fill"></i> Send Event
                         </button>
@@ -216,6 +151,49 @@
                         </div>
                         <div id="kinesis-output" class="output-console">
                             <p class="text-muted">No data yet. Send an event to see results.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Management and Automation -->
+        <div class="row mb-4">
+            <!-- Data Download Management -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-cloud-arrow-down"></i> Data Download Management</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Download the latest version of the dataset from S3.</p>
+                        <button id="download-data-btn" class="btn btn-info w-100">
+                            <i class="bi bi-download"></i> Download Dataset
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Automated Event Generation -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="bi bi-robot"></i> Automated Event Generation</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Automatically send events from the dataset to the pipeline.</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <button id="start-auto-events-btn" class="btn btn-success">
+                                    <i class="bi bi-play-fill"></i> Start
+                                </button>
+                                <button id="stop-auto-events-btn" class="btn btn-danger" disabled>
+                                    <i class="bi bi-stop-fill"></i> Stop
+                                </button>
+                            </div>
+                            <div id="auto-event-status" class="status-indicator">
+                                <span class="status-text">Stopped</span>
+                            </div>
                         </div>
                     </div>
                 </div>

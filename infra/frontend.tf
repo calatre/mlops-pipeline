@@ -159,6 +159,17 @@ resource "aws_iam_policy" "frontend_ec2_policy" {
           "ec2:DescribeTags"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kinesis:PutRecord",
+          "kinesis:GetRecords",
+          "kinesis:GetShardIterator",
+          "kinesis:DescribeStream",
+          "kinesis:ListStreams"
+        ]
+        Resource = aws_kinesis_stream.taxi_predictions.arn
       }
     ]
   })
@@ -186,6 +197,9 @@ resource "aws_instance" "frontend" {
   key_name               = aws_key_pair.mlops_key_front.key_name
   vpc_security_group_ids = [aws_security_group.frontend.id]
   iam_instance_profile   = aws_iam_instance_profile.frontend.name
+
+  # Ensure orchestration instance is created first
+  depends_on = [aws_instance.mlops_orchestration]
 
 
   # Enable detailed monitoring for cost optimization insights
@@ -223,11 +237,29 @@ resource "aws_instance" "frontend" {
     destination = "/opt/mlops"                  # To the remote directory
   }
 
+  # Provisioner to create .env file with orchestration outputs
+  # This demonstrates passing orchestration outputs as variables to frontend
+  provisioner "remote-exec" {
+    inline = [
+      "cd /opt/mlops",
+      # Pass orchestration outputs as environment variables
+      "echo 'ORCHESTRATION_IP=${aws_instance.mlops_orchestration.public_ip}' >> .env",
+      "echo 'MLFLOW_URL=http://${aws_instance.mlops_orchestration.public_ip}:5000' >> .env",
+      "echo 'AIRFLOW_URL=http://${aws_instance.mlops_orchestration.public_ip}:8080' >> .env",
+      "echo 'PROJECT_NAME=${var.project_name}' >> .env",
+      "echo 'ENVIRONMENT=${var.environment}' >> .env",
+      "echo 'AWS_DEFAULT_REGION=${var.aws_region}' >> .env",
+      # Pass S3 bucket names from main configuration
+      "echo 'MLFLOW_ARTIFACTS_BUCKET=${aws_s3_bucket.mlflow_artifacts.bucket}' >> .env",
+      "echo 'DATA_STORAGE_BUCKET=${aws_s3_bucket.data_storage.bucket}' >> .env"
+    ]
+  }
+
   # Provisioner to run docker after files are copied
   provisioner "remote-exec" {
     inline = [
       "cd /opt/mlops",
-      "/usr/bin/docker build -t mlops-frontend .",
+      "sleep 30 && sudo /usr/bin/docker build -t mlops-frontend .",
       #"docker run -d --restart=always -p 5000:5000 --name mlops-frontend mlops-frontend",
       "sudo cp /opt/mlops/mlops-docker-frontend.service /etc/systemd/system/mlops-docker-frontend.service",
       "sudo systemctl enable mlops-docker-frontend.service",
@@ -272,4 +304,26 @@ output "frontend_instance_public_dns" {
 output "frontend_direct_url" {
   description = "Direct URL to access the frontend"
   value       = "http://${aws_instance.frontend.public_ip}:5000"
+}
+
+# Remote state access removed - using direct references instead
+# All resources are in the same state file, so direct references are preferred
+
+# Output orchestration information for reference
+output "orchestration_ips_available" {
+  description = "Available orchestration IPs for reference"
+  value       = [aws_instance.mlops_orchestration.public_ip]
+}
+
+output "lambda_role_arn_available" {
+  description = "Available Lambda role ARN for reference"
+  value       = aws_iam_role.lambda_role.arn
+}
+
+output "kinesis_stream_available" {
+  description = "Available Kinesis stream information"
+  value = {
+    name = aws_kinesis_stream.taxi_predictions.name
+    arn  = aws_kinesis_stream.taxi_predictions.arn
+  }
 }

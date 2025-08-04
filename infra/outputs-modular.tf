@@ -33,6 +33,21 @@ output "lambda_role_arn" {
   value       = aws_iam_role.lambda_role.arn
 }
 
+output "lambda_function_name" {
+  description = "Name of the Lambda function"
+  value       = aws_lambda_function.taxi_prediction.function_name
+}
+
+output "lambda_function_arn" {
+  description = "ARN of the Lambda function"
+  value       = aws_lambda_function.taxi_prediction.arn
+}
+
+output "lambda_image_uri" {
+  description = "Container image URI used by the Lambda function"
+  value       = aws_lambda_function.taxi_prediction.image_uri
+}
+
 # VPC Module Outputs
 output "vpc_id" {
   description = "ID of the VPC"
@@ -189,6 +204,7 @@ output "mlops_orchestration_status_url" {
   value       = "http://${aws_instance.mlops_orchestration.public_ip}:8081"
 }
 
+
 # ECR Repository Outputs for CI/CD
 
 output "ecr_lambda_repository_url" {
@@ -224,9 +240,12 @@ output "infrastructure_summary" {
     security_groups                    = module.security_groups.security_groups_summary.total_security_groups
     mlops_orchestration_instance_type  = aws_instance.mlops_orchestration.instance_type
     mlops_orchestration_instance_state = aws_instance.mlops_orchestration.instance_state
+    lambda_function_created            = true
+    lambda_package_type                = "Image"
+    lambda_runtime                     = "Container"
     s3_buckets                         = 3
     kinesis_shards                     = var.kinesis_shard_count
     ecr_repositories                   = 1
-    architecture                       = "simplified-ec2-docker-compose"
+    architecture                       = "simplified-ec2-docker-compose-lambda"
   }
 }

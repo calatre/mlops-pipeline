@@ -2,12 +2,15 @@
 
 // Global state
 let kinesisPollingInterval = null;
+let autoEventInterval = null;
+let isAutoEventsRunning = false;
 
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
     checkSystemHealth();
     startKinesisPolling();
+    loadS3Files();
 });
 
 // Event Listeners

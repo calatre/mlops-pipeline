@@ -1,22 +1,22 @@
 name: MLOps Pipeline CI/CD
 
-#on:
-#  push:
-#    branches: [main, develop, prod]
-#    paths:
-#      - 'airflow/**'
-#      - 'lambda_function/**'
-#      - 'mlflow/**'
-#      - 'infra/**'
-#      - '.github/workflows/**'
-#  pull_request:
-#    branches: [main, prod]
-#    paths:
-#      - 'airflow/**'
-#      - 'lambda_function/**'
-#      - 'mlflow/**'
-#      - 'infra/**'
-#      - '.github/workflows/**'
+on:
+  push:
+    branches: [main, develop, prod]
+    paths:
+      - 'airflow/**'
+      - 'lambda_function/**'
+      - 'mlflow/**'
+      - 'infra/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [main, prod]
+    paths:
+      - 'airflow/**'
+      - 'lambda_function/**'
+      - 'mlflow/**'
+      - 'infra/**'
+      - '.github/workflows/**'
 
 env:
   AWS_REGION: eu-north-1
@@ -151,6 +151,8 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Run Security Scan with Trivy
         uses: aquasecurity/trivy-action@master
@@ -167,136 +169,4 @@ jobs:
           sarif_file: 'trivy-results.sarif'
         continue-on-error: true
 
-  # Job 4: Deploy Development (on main branch)
-  deploy-development:
-    runs-on: ubuntu-latest
-    needs: [build-and-push]
-    if: github.ref == 'refs/heads/main'
-    environment: development
-    
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ~1.0
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-duration-seconds: 1200
-
-      # Deploy infrastructure if needed
-      - name: Terraform Init
-        working-directory: ./infra
-        run: terraform init
-
-      - name: Terraform Plan
-        working-directory: ./infra
-        run: |
-          terraform plan -out=tfplan \
-            -var="environment=dev"
-
-      - name: Terraform Apply
-        working-directory: ./infra
-        run: terraform apply -auto-approve tfplan
-
-      - name: Run Health Checks
-        run: |
-          # Get ALB DNS name from Terraform output
-          ALB_DNS=$(cd infra && terraform output -raw alb_dns_name)
-          echo "Testing Airflow UI..."
-          curl -f -s -o /dev/null "http://${ALB_DNS}/" || echo "Airflow health check failed"
-          echo "Testing MLflow UI..."
-          curl -f -s -o /dev/null "http://${ALB_DNS}/mlflow/" || echo "MLflow health check failed"
-
-      - name: Output Deployment Info
-        working-directory: ./infra
-        run: |
-          echo "### Development Deployment Complete 🚀" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Services:**" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Airflow API Server & Scheduler" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ MLflow Server" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Access URLs:**" >> $GITHUB_STEP_SUMMARY
-          ALB_DNS=$(terraform output -raw alb_dns_name)
-          echo "- Airflow UI: http://${ALB_DNS}/" >> $GITHUB_STEP_SUMMARY
-          echo "- MLflow UI: http://${ALB_DNS}/mlflow/" >> $GITHUB_STEP_SUMMARY
-
-  # Job 5: Deploy Production (on prod branch only)
-  deploy-production:
-    runs-on: ubuntu-latest
-    needs: [build-and-push]
-    if: github.ref == 'refs/heads/prod'
-    environment: production
-    
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ~1.0
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-duration-seconds: 1200
-
-      - name: Terraform Init
-        working-directory: ./infra
-        run: terraform init
-
-      - name: Terraform Plan
-        working-directory: ./infra
-        run: |
-          terraform plan -out=tfplan \
-            -var="environment=prod" \
-            -var="airflow_db_password=${{ secrets.AIRFLOW_DB_PASSWORD }}"
-
-      - name: Terraform Apply
-        working-directory: ./infra
-        run: terraform apply -auto-approve tfplan
-
-      - name: Update ECS Services
-        run: |
-          aws ecs update-service \
-            --cluster ${{ env.PROJECT_NAME }}-cluster-prod \
-            --service ${{ env.PROJECT_NAME }}-airflow-prod \
-            --force-new-deployment
-          
-          aws ecs update-service \
-            --cluster ${{ env.PROJECT_NAME }}-cluster-prod \
-            --service ${{ env.PROJECT_NAME }}-mlflow-prod \
-            --force-new-deployment
-
-      - name: Wait for Services to Stabilize
-        run: |
-          aws ecs wait services-stable \
-            --cluster ${{ env.PROJECT_NAME }}-cluster-prod \
-            --services ${{ env.PROJECT_NAME }}-airflow-prod ${{ env.PROJECT_NAME }}-mlflow-prod
-
-      - name: Run Production Health Checks
-        run: |
-          ALB_DNS=$(cd infra && terraform output -raw alb_dns_name)
-          curl -f -s -o /dev/null "http://${ALB_DNS}/" && echo "✅ Airflow health check passed"
-          curl -f -s -o /dev/null "http://${ALB_DNS}/mlflow/" && echo "✅ MLflow health check passed"
-
-      - name: Output Production Deployment Info
-        working-directory: ./infra
-        run: |
-          echo "### Production Deployment Complete ✅" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Services Updated:**" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Airflow (Production)" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ MLflow (Production)" >> $GITHUB_STEP_SUMMARY
