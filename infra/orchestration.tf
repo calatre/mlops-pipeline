@@ -25,7 +25,7 @@ resource "local_file" "mlops_key_orch_private" {
 # Data source for Amazon Linux 2023 AMI is defined in frontend.tf
 resource "aws_instance" "mlops_orchestration" {
   ami                    = "ami-0b6acaa45fec15278" #data.aws_ami.amazon_linux_2023.id
-  instance_type          = "t3.large"              #t3.large or xlarge probably needed
+  instance_type          = "t3.xlarge"              #t3.large or xlarge probably needed
   key_name               = aws_key_pair.mlops_key_orch.key_name
   vpc_security_group_ids = [module.security_groups.ec2_security_group_id]
   subnet_id              = module.vpc.public_subnet_ids[0]
@@ -193,7 +193,12 @@ output "orchestration_instance_public_dns" {
   value       = aws_instance.mlops_orchestration.public_dns
 }
 
-output "orchestration_direct_url" {
-  description = "Direct URL to access the orchestration"
+output "mlflow_direct_url" {
+  description = "Direct URL to access the mlflow UI"
   value       = "http://${aws_instance.mlops_orchestration.public_ip}:5000"
+}
+
+output "airflow_direct_url" {
+  description = "Direct URL to access the Airflow UI"
+  value       = "http://${aws_instance.mlops_orchestration.public_ip}:8080"
 }

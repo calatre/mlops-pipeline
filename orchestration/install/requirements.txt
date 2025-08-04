@@ -5,4 +5,3 @@ hyperopt
 xgboost
 fastparquet
 python-dateutil
-airflow

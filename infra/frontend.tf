@@ -31,6 +31,15 @@ resource "aws_security_group" "frontend" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Inbound rule: Allow traffic on port 8081 from anywhere (for admin access)
+  ingress {
+    description = "Allow admin access on port 8081"
+    from_port   = 8081
+    to_port     = 8081
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   # Inbound rule: Allow traffic on port 22 from anywhere (for admin troubleshoot)
   ingress {
     description = "Allow admin access on port 22"
@@ -218,10 +227,11 @@ resource "aws_instance" "frontend" {
   provisioner "remote-exec" {
     inline = [
       "cd /opt/mlops",
-      "/usr/local/bin/docker build -t mlops-frontend .",
-      "/usr/local/bin/docker run -d --restart=always -p 5000:5000 --name mlops-frontend mlops-frontend",
+      "/usr/bin/docker build -t mlops-frontend .",
+      #"docker run -d --restart=always -p 5000:5000 --name mlops-frontend mlops-frontend",
       "sudo cp /opt/mlops/mlops-docker-frontend.service /etc/systemd/system/mlops-docker-frontend.service",
       "sudo systemctl enable mlops-docker-frontend.service",
+      "sudo systemctl start mlops-docker-frontend.service",
       "nohup python3 -m http.server 8081 --directory /opt/mlops > /dev/null 2>&1 &"
     ]
   }
