@@ -20,7 +20,7 @@ If you're coming from MLOps Zoomcamp, here's the current status, important notes
 - ✅ Terraform configuration validated and tested
 - ✅ EC2-based Docker Compose setup (cost-optimized)
 - ✅ Lambda container deployment ready
-- ⚠️ **Note**: Most resources are configured but not currently deployed, or still buggy
+- ⚠️ **Note**: Some resources are configured but not currently deployed or still buggy
 
 ## 🏗️ Current Architecture (Simplified & Cost-Optimized)
 
