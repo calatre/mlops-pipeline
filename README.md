@@ -3,12 +3,13 @@
 Hi there!
 
 If you're coming from MLOps Zoomcamp, here's the current status, important notes and things to check:
-- I'm not yet versed in ML, so instead of making my own model just reused that part from the course. Focused on using my background of sys admin to try and create an "easy setup" pipeline.
-- Used plenty of AU until it blew in my face and then been debugging manually. Some stuff (like the containers inside ec2) sometimes need to be started manually
+- I'm not yet versed in ML, so instead of making my own model, just reused that part from the course. Focused on using my background of sys admin to try and create an "easy to setup" pipeline.
+- Used plenty of AI (mostly Claude) until it blew in my face and then been debugging manually. Some stuff (like the containers inside ec2 right now) sometimes need to be started manually
 - Infra as code (terraform) deploying on cloud (AWS - you will need your credentials to check yourself, or ping me in the course Slack (André Calatré) if you want me to provision the infra momentarily)
-- Serving mode as streaming or batch (airflow)
+- Serving mode as streaming (Kinesis/Lambda) or batch (airflow)
 - There's CI CD (github actions) but no tests yet.
-- Feel free to check more recent commits (maybe I fix things!)
+- No model monitoring implemented yet.
+- Feel free to check more recent commits (maybe I fix or better document more things!)
 
 
 **Personal learning project** for building an MLOps pipeline that predicts NYC taxi trip durations. This project emphasizes simplicity, cost-efficiency, and practical learning over enterprise-grade complexity.
@@ -205,7 +206,7 @@ cp .env.example .env
 # Edit .env with your AWS credentials and preferences
 ```
 
-### 2. Deploy Infrastructure
+### 2. Deploy Infrastructure (on AWS)
 
 ```bash
 cd infra
@@ -215,18 +216,11 @@ terraform apply
 
 # Note the outputs for later configuration
 terraform output
+
+# This will setup all AWS infrastructure 
 ```
 
-### 3. Deploying on AWS
-
-```bash
-cd ../infra
-terraform apply
-
-# This will setup all AWS infrastructure including ECS, RDS, and S3 buckets
-```
-
-### 4. Initialize Data and Test Pipeline
+### 3. Initialize Data and Test Pipeline (not yet done)
 
 ```bash
 # Setup initial data
@@ -239,11 +233,12 @@ python scripts/test_consumer.py
 python scripts/event_simulation.py --max-events 100 --interval 2
 ```
 
-### 5. Access Interfaces
+### 4. Access Interfaces
 
-- **Airflow UI**: http://localhost:8080 (admin/admin)
-- **MLflow UI**: http://localhost:5000
-- **Evidently Reports**: Check S3 monitoring bucket
+- **Airflow UI**: http://[orchestration_instance_ip]:8080 (admin/admin)
+- **MLflow UI**: http://[orchestration_instance_ip]:5000
+- **Frontend UI**: http://[frontend_instance_ip]:5000
+- **Evidently Reports**: Check S3 monitoring bucket (not yet done)
 
 ## 📊 Technology Stack
 
@@ -261,28 +256,18 @@ python scripts/event_simulation.py --max-events 100 --interval 2
 | **Feature Engineering** | Scikit-learn | Data preprocessing |
 | **Containerization** | Docker | Local development environment |
 
-## 📁 Project Structure
+## 📁 Project Structure (incomplete)
 
 ```
 mlops-pipeline/
 ├── README.md                 # This comprehensive guide
-├── to_check.md              # Failure points analysis
-├── interface_to_do.md       # Web interface planning
+
 ├── .env.example             # Environment variables template
 ├── .gitignore              # Git ignore patterns
 │
 ├── infra/                  # Terraform infrastructure
-│   ├── main.tf            # Main infrastructure resources
-│   ├── variables.tf       # Input variables
-│   └── outputs.tf         # Output values
-│
-├── airflow/               # Airflow orchestration
-│   ├── docker-compose.yaml # Local development services
-│   ├── Dockerfile         # Custom Airflow image
-│   └── dags/             # Airflow DAGs
-│       ├── training_dag.py      # Model training pipeline
-│       └── monitoring_dag.py    # Model monitoring pipeline
-│
+
+
 ├── lambda_function/       # AWS Lambda inference
 │   └── lambda_function.py # Real-time prediction service
 │
@@ -291,10 +276,7 @@ mlops-pipeline/
 │   ├── event_simulation.py # Event streaming simulation
 │   ├── test_consumer.py  # End-to-end pipeline testing
 │   └── ride.py          # Data structures
-│
-└── dashboard/           # Optional web interface
-    ├── app.py          # Flask dashboard app
-    └── templates/      # HTML templates
+
 ```
 
 ## 🔧 Configuration
@@ -317,10 +299,6 @@ LAMBDA_FUNCTION_NAME=taxi-trip-duration-predictor
 # MLflow Configuration
 MLFLOW_TRACKING_URI=http://localhost:5000
 
-# Airflow Configuration
-AIRFLOW_UID=50000
-_AIRFLOW_WWW_USER_USERNAME=admin
-_AIRFLOW_WWW_USER_PASSWORD=admin
 ```
 
 ### Terraform Variables
@@ -341,7 +319,7 @@ variable "environment" {
 }
 ```
 
-## 🧪 Testing
+## 🧪 Testing (not yet implemented)
 
 ### Unit Tests
 
@@ -356,7 +334,7 @@ python scripts/data_setup.py
 python -c "from airflow.dags.training_dag import *; print('DAG syntax OK')"
 ```
 
-### Integration Tests
+### Integration Tests (not yet implemented)
 
 ```bash
 # End-to-end pipeline test
@@ -370,7 +348,7 @@ curl http://localhost:8080/health  # Airflow
 curl http://localhost:5000         # MLflow
 ```
 
-## 📈 Monitoring and Observability
+## 📈 Monitoring and Observability (not yet implemented)
 
 ### Key Metrics to Monitor
 
@@ -394,37 +372,7 @@ aws logs tail /aws/lambda/taxi-trip-duration-predictor --follow
 
 ## 💰 Cost Optimization
 
-This project is optimized for learning with minimal AWS costs:
-
-- **EC2 instances instead of ECS Fargate**: Saves ~$60-80/month
-- **Containerized PostgreSQL instead of RDS**: Saves ~$30-40/month  
-- **Direct EC2 access instead of ALB**: Saves ~$20-30/month
-- **Local Docker volumes instead of EFS**: Saves ~$15-20/month
-- **Single NAT Gateway**: Saves $45/month
-- **14-day log retention**: Reduces CloudWatch costs
-
-**Estimated Monthly Cost**: $30-50 (down from $90-120)
-
-## 📁 Project Structure
-
-```
-mlops-pipeline/
-├── airflow/                 # Airflow container and DAGs
-│   ├── dags/               # ML pipeline workflows
-│   ├── Dockerfile          # Custom Airflow image
-│   └── requirements.txt    
-├── infra/                  # Terraform infrastructure
-│   ├── main-modular.tf     # Main configuration
-│   ├── modules/            # Reusable modules
-│   └── variables.tf        
-├── lambda_function/        # Inference service
-│   └── lambda_function.py  
-├── scripts/                # Utility scripts
-│   ├── build_lambda.sh     # Lambda packaging
-│   ├── data_setup.py       # Data preparation
-│   └── event_simulation.py # Testing
-└── taxi_predictor.zip      # Lambda deployment package
-```
+This project is optimized for learning with low AWS costs
 
 ## 🔧 Key Features
 
@@ -461,107 +409,27 @@ aws logs tail /aws/lambda/taxi-trip-duration-predictor
 
 1. **Learning Project**: Not production-ready, focuses on understanding MLOps concepts
 2. **Security**: Basic security only - do not use for sensitive data
-3. **Lambda Size**: 392MB package requires S3 intermediate storage
-4. **Cold Starts**: Expect Lambda cold start delays due to large package
 
 ## 🛠️ Troubleshooting
 
 ### Common Issues
 
-1. **Lambda timeout**: Increase timeout in `variables.tf`
-2. **ECS tasks not starting**: Check CloudWatch logs
-3. **ALB health checks failing**: Verify security groups
+(to be populated. at this stage, mostly containers on the ec2 instances not starting automtically)
 
 ### Useful Commands
 
 ```bash
-# Check ECS service status
-aws ecs describe-services --cluster mlops-taxi-prediction-cluster-dev --services mlops-airflow-dev
 
-# View Lambda logs
-aws logs tail /aws/lambda/taxi-trip-duration-predictor --follow
-
-# Test ALB endpoints
-curl http://alb-dns/health
 ```
 
 ## 📚 Learning Resources
 
-- [AWS ECS Documentation](https://docs.aws.amazon.com/ecs/)
 - [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest)
 - [MLflow Documentation](https://mlflow.org/docs/latest/index.html)
 - [Apache Airflow Guides](https://airflow.apache.org/docs/)
 
 ## 🤝 Acknowledgments
 
-Built as a learning exercise inspired by various MLOps courses and tutorials. Special thanks to the open-source community for making these tools accessible for learning.
-
+MLOps Zoomcamp!
 ---
-
-**Remember**: This is a learning project. Keep it simple, keep it cheap, keep learning! 🚀
-
-## Deployment Status (July 27, 2025)
-
-### Infrastructure Deployed
-The core infrastructure has been successfully deployed on AWS:
-
-- **Compute**: ECS Fargate cluster running Airflow and MLflow
-- **Storage**: S3 buckets for data, MLflow artifacts, and monitoring reports
-- **Database**: RDS PostgreSQL for Airflow metadata
-- **Networking**: VPC with public/private subnets, ALB for service access
-- **Shared Storage**: EFS for DAGs and logs
-
-### Service Endpoints
-- **Airflow Web UI**: http://mlops-taxi-prediction-alb-dev-638868392.eu-north-1.elb.amazonaws.com
-- **MLflow Tracking Server**: http://mlops-taxi-prediction-alb-dev-638868392.eu-north-1.elb.amazonaws.com/mlflow
-
-### Docker Images
-All services use custom Docker images pushed to ECR:
-- Airflow: Based on `apache/airflow:3.0.3-python3.11`
-- MLflow: Based on `python:3.11-slim`
-
-### Service Communication
-- Services communicate internally using AWS Service Discovery
-- MLflow endpoint for Airflow: `http://mlflow.mlops-taxi-prediction-dev.local:5000`
-- No external API calls needed between services
-
-### Next Steps
-1. Upload DAGs to EFS through the EC2 development instance
-2. Configure Airflow connections and variables
-3. Test the training pipeline end-to-end
-4. Set up monitoring and alerting
-
-
-## Latest Updates (2025-01-27)
-
-### ✅ Airflow 3.x Migration Completed
-- Upgraded to Apache Airflow 3.0.3 with Python 3.11 support
-- Fixed ECS deployment compatibility issues
-- Updated command structure for Airflow 3.x (`api-server` instead of `webserver`)
-- All services now running successfully on AWS ECS Fargate
-
-### 🚀 Current Service Status
-- **Airflow API Server**: ✅ Healthy and accessible
-- **Airflow Scheduler**: ✅ Running and processing
-- **MLflow Server**: ✅ Operational with artifact storage
-- **PostgreSQL Database**: ✅ Connected and functional
-- **Application Load Balancer**: ✅ Routing traffic correctly
-
-### 🌐 Access URLs
-```
-Airflow Web UI: http://mlops-taxi-prediction-alb-dev-638868392.eu-north-1.elb.amazonaws.com/
-MLflow Web UI:  http://mlops-taxi-prediction-alb-dev-638868392.eu-north-1.elb.amazonaws.com/mlflow/
-```
-
-### 📋 Next Steps
-1. Complete Airflow admin user setup
-2. Deploy and test ML pipeline DAGs
-3. Verify Airflow-MLflow integration
-4. Set up monitoring and alerting
-
-### 🔧 Technical Highlights
-- **Architecture**: Microservices on ECS Fargate with service discovery
-- **Platform**: linux/amd64 containers for optimal compatibility
-- **Networking**: Private subnets with ALB for external access
-- **Storage**: EFS for shared storage, S3 for artifacts, RDS for metadata
 
