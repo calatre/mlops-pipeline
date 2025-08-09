@@ -23,6 +23,19 @@ provider "aws" {
   region = var.aws_region
 }
 
+# Read perennial ECR repository details from remote state
+# Uses the same backend bucket with a different key to keep ECR out of ephemeral destroys
+data "terraform_remote_state" "ecr" {
+  backend = "s3"
+  config = {
+    bucket         = "mlops-taxi-prediction-terraform-state"
+    key            = "perennial/ecr.tfstate"
+    region         = "eu-north-1"
+    encrypt        = true
+    dynamodb_table = "terraform-state-lock"
+  }
+}
+
 # VPC Module
 module "vpc" {
   source = "./modules/vpc"
@@ -194,18 +207,6 @@ resource "local_file" "main_key_private" {
   file_permission = "0600"
 }
 
-# ECR Module
-module "ecr" {
-  source = "./modules/ecr"
-
-  project_name          = var.project_name
-  environment           = var.environment
-  enable_image_scanning = var.ecr_enable_image_scanning
-  max_image_count       = var.ecr_max_image_count
-  untagged_expiry_days  = var.ecr_untagged_expiry_days
-
-  tags = var.tags
-}
 
 # S3 Buckets
 resource "aws_s3_bucket" "mlflow_artifacts" {
@@ -333,9 +334,7 @@ resource "null_resource" "build_lambda_container" {
     working_dir = "${path.module}/.."
   }
 
-  depends_on = [
-    module.ecr
-  ]
+  # Build script assumes ECR repo exists; ensured by maintaining perennial ECR stack
 }
 
 # Lambda Function Role
@@ -422,7 +421,7 @@ resource "aws_lambda_function" "taxi_prediction" {
   function_name = "${var.project_name}-taxi-prediction-${var.environment}"
   role          = aws_iam_role.lambda_role.arn
   package_type  = "Image"
-  image_uri     = "${module.ecr.lambda_repository_url}:latest"
+  image_uri     = "${data.terraform_remote_state.ecr.outputs.lambda_repository_url}:latest"
   timeout       = var.lambda_timeout
   memory_size   = var.lambda_memory_size
   architectures = ["x86_64"]

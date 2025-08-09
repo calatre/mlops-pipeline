@@ -17,6 +17,12 @@ on:
       - 'mlflow/**'
       - 'infra/**'
       - '.github/workflows/**'
+  workflow_dispatch:
+    inputs:
+      use_make_pipeline:
+        description: "Run alternative Make-based image build/push pipeline"
+        required: false
+        default: "true"
 
 env:
   AWS_REGION: eu-north-1
@@ -135,11 +141,16 @@ jobs:
           echo "IMAGE_TAG=v$(date +%Y%m%d)-${GITHUB_SHA::8}" >> $GITHUB_ENV
           if [ "${{ github.ref }}" == "refs/heads/prod" ]; then
             echo "ENVIRONMENT=prod" >> $GITHUB_ENV
-            echo "REPOSITORY=${{ env.PROJECT_NAME }}-${{ matrix.service }}-app-prod" >> $GITHUB_ENV
+            echo "REPOSITORY=${{ env.PROJECT_NAME }}-lambda-app-prod" >> $GITHUB_ENV
           else
             echo "ENVIRONMENT=dev" >> $GITHUB_ENV
-            echo "REPOSITORY=${{ env.PROJECT_NAME }}-${{ matrix.service }}-app-dev" >> $GITHUB_ENV
+            echo "REPOSITORY=${{ env.PROJECT_NAME }}-lambda-app-dev" >> $GITHUB_ENV
           fi
+
+      - name: Ensure ECR repository exists (auto-create if missing)
+        run: |
+          aws ecr describe-repositories --repository-names "${REPOSITORY}" --region "${{ env.AWS_REGION }}" >/dev/null 2>&1 || \
+          aws ecr create-repository --repository-name "${REPOSITORY}" --region "${{ env.AWS_REGION }}"
 
       - name: Build and Push Docker Image - Lambda
         if: matrix.service == 'lambda'
@@ -169,4 +180,36 @@ jobs:
           sarif_file: 'trivy-results.sarif'
         continue-on-error: true
 
+  # Optional alternative: Make-based build/push using local scripts and targets
+  # This job runs only on manual trigger (workflow_dispatch) to avoid duplicating work with the default job.
+  build-and-push-make:
+    runs-on: ubuntu-latest
+    needs: [test-and-lint, terraform-validate]
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 1200
+
+      - name: Derive Environment
+        id: env
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/prod" ]; then
+            echo "ENVIRONMENT=prod" >> $GITHUB_ENV
+          else
+            echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+          fi
+
+      - name: Login to ECR (Make target)
+        run: make ecr-login AWS_REGION=${{ env.AWS_REGION }}
+
+      - name: Build and Push Lambda (Make target)
+        run: make lambda-build AWS_REGION=${{ env.AWS_REGION }} ENVIRONMENT=${{ env.ENVIRONMENT }}
 

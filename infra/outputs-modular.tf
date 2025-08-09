@@ -189,17 +189,17 @@ output "mlops_orchestration_status_url" {
 
 output "ecr_lambda_repository_url" {
   description = "URL of the Lambda ECR repository"
-  value       = module.ecr.lambda_repository_url
+  value       = data.terraform_remote_state.ecr.outputs.lambda_repository_url
 }
 
 output "ecr_repository_names" {
   description = "Map of all ECR repository names"
-  value       = module.ecr.all_repository_names
+  value       = data.terraform_remote_state.ecr.outputs.all_repository_names
 }
 
 output "ecr_repository_urls" {
   description = "Map of all ECR repository URLs"
-  value       = module.ecr.all_repository_urls
+  value       = data.terraform_remote_state.ecr.outputs.all_repository_urls
 }
 
 # Infrastructure Summary
