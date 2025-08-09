@@ -1,202 +1,13 @@
 # Frontend EC2 Infrastructure
 
-# Data source to get the latest Amazon Linux 2023 AMI
-#data "aws_ami" "amazon_linux_2023" {
-#  most_recent = true
-#  owners      = ["amazon"]
-#
-#  filter {
-#    name   = "name"
-#    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
-#  }
-#
-#  #filter {
-#  #  name   = "virtualization-type"
-#  #  values = ["hvm"]
-#  #}
-#}
-
-# Security Group for Frontend EC2 Instance
-resource "aws_security_group" "frontend" {
-  name        = "${var.project_name}-frontend-sg-${var.environment}"
-  description = "Security group for frontend EC2 instance"
-  vpc_id      = module.vpc.vpc_id
-
-  # Inbound rule: Allow traffic on port 5000 from anywhere (for admin access)
-  ingress {
-    description = "Allow admin access on port 5000"
-    from_port   = 5000
-    to_port     = 5000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Inbound rule: Allow traffic on port 8081 from anywhere (for admin access)
-  ingress {
-    description = "Allow admin access on port 8081"
-    from_port   = 8081
-    to_port     = 8081
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Inbound rule: Allow traffic on port 22 from anywhere (for admin troubleshoot)
-  ingress {
-    description = "Allow admin access on port 22"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Outbound rule: Allow HTTPS traffic to AWS services
-  egress {
-    description = "Allow HTTPS to AWS services"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Outbound rule: Allow HTTP for package installations
-  egress {
-    description = "Allow HTTP for package installations"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = merge(var.tags, {
-    Name = "${var.project_name}-frontend-sg-${var.environment}"
-  })
-}
-
-# Key Pair for EC2 access
-# 1. Generate a new private key using tls_private_key
-resource "tls_private_key" "mlops_key_front" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
-}
-
-# 2. Create the AWS Key Pair using the public key from tls_private_key
-resource "aws_key_pair" "mlops_key_front" {
-  key_name   = "mlops_key_front"
-  public_key = tls_private_key.mlops_key_front.public_key_openssh
-  tags       = var.tags
-}
-
-# 3. Store the generated private key in a local file
-resource "local_file" "mlops_key_front_private" {
-  content  = tls_private_key.mlops_key_front.private_key_pem
-  filename = "${path.module}/ssh/mlops_key_front.pem"
-  # Make sure the permissions are set correctly for SSH
-  file_permission = "0600"
-}
-
-# IAM Role for EC2 Instance
-resource "aws_iam_role" "frontend_ec2" {
-  name = "${var.project_name}-frontend-ec2-role-${var.environment}"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = var.tags
-}
-
-# IAM Instance Profile for EC2
-resource "aws_iam_instance_profile" "frontend" {
-  name = "${var.project_name}-frontend-instance-profile-${var.environment}"
-  role = aws_iam_role.frontend_ec2.name
-}
-
-# IAM Policy for Frontend EC2 to access necessary AWS services
-resource "aws_iam_policy" "frontend_ec2_policy" {
-  name        = "${var.project_name}-frontend-ec2-policy-${var.environment}"
-  description = "IAM policy for frontend EC2 instance"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:ListBucket"
-        ]
-        Resource = [
-          aws_s3_bucket.mlflow_artifacts.arn,
-          "${aws_s3_bucket.mlflow_artifacts.arn}/*",
-          aws_s3_bucket.data_storage.arn,
-          "${aws_s3_bucket.data_storage.arn}/*"
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "cloudwatch:PutMetricData",
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "logs:DescribeLogStreams"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "ec2:DescribeInstances",
-          "ec2:DescribeTags"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "kinesis:PutRecord",
-          "kinesis:GetRecords",
-          "kinesis:GetShardIterator",
-          "kinesis:DescribeStream",
-          "kinesis:ListStreams"
-        ]
-        Resource = aws_kinesis_stream.taxi_predictions.arn
-      }
-    ]
-  })
-
-  tags = var.tags
-}
-
-# Attach policy to role
-resource "aws_iam_role_policy_attachment" "frontend_ec2_policy" {
-  role       = aws_iam_role.frontend_ec2.name
-  policy_arn = aws_iam_policy.frontend_ec2_policy.arn
-}
-
-# Attach SSM policy for Session Manager access (optional but recommended)
-resource "aws_iam_role_policy_attachment" "frontend_ssm" {
-  role       = aws_iam_role.frontend_ec2.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
 # EC2 Instance for Frontend
 resource "aws_instance" "frontend" {
   ami                    = "ami-0b6acaa45fec15278" #data.aws_ami.amazon_linux_2023.id
   instance_type          = "t3.micro"
   subnet_id              = module.vpc.public_subnet_ids[0] # Using first public subnet
-  key_name               = aws_key_pair.mlops_key_front.key_name
-  vpc_security_group_ids = [aws_security_group.frontend.id]
-  iam_instance_profile   = aws_iam_instance_profile.frontend.name
+  key_name               = aws_key_pair.main_key.key_name
+  vpc_security_group_ids = [aws_security_group.main.id]
+  iam_instance_profile   = aws_iam_instance_profile.main_instance_profile.name
 
   # Ensure orchestration instance is created first
   depends_on = [aws_instance.mlops_orchestration]
@@ -259,25 +70,38 @@ resource "aws_instance" "frontend" {
   provisioner "remote-exec" {
     inline = [
       "cd /opt/mlops",
-      "# Docker readiness check",
-      "MAX_ATTEMPTS=30",
-      "ATTEMPT=0",
+      "# ==========================================================================================",
+      "# DOCKER READINESS CHECK: Dynamic waiting with intelligent retry logic",
+      "# This replaces static sleep commands with active Docker daemon status checking",
+      "# Benefits: Eliminates race conditions, handles varying startup times, provides clear logging",
+      "# ==========================================================================================",
+      "MAX_ATTEMPTS=30    # Maximum retry attempts (prevents infinite loops)",
+      "ATTEMPT=0          # Current attempt counter",
+      "# Polling loop: Uses 'docker info' to actively check Docker daemon status",
+      "# This is more reliable than fixed sleep delays which don't account for actual readiness",
       "while ! sudo docker info >/dev/null 2>&1; do",
       "  ATTEMPT=$((ATTEMPT+1))",
+      "  # Fail-safe: Exit with error if maximum attempts reached",
       "  if [ $ATTEMPT -ge $MAX_ATTEMPTS ]; then",
-      "    echo 'Docker daemon failed to start'",
+      "    echo 'ERROR: Docker daemon failed to start after $MAX_ATTEMPTS attempts'",
       "    exit 1",
       "  fi",
-      "  echo 'Waiting for Docker daemon...'",
+      "  # Progress logging: Shows current attempt for monitoring/debugging",
+      "  echo 'Waiting for Docker daemon... (attempt $ATTEMPT/$MAX_ATTEMPTS)'",
+      "  # Fixed 2-second delay (simpler than exponential backoff for this use case)",
       "  sleep 2",
       "done",
-      "echo 'Docker daemon is ready'",
-      "# Now build the Docker image",
+      "echo 'SUCCESS: Docker daemon is ready - proceeding with container build'",
+      "# ==========================================================================================",
+      "# DOCKER BUILD: Now that daemon is confirmed ready, build the application container",
+      "# ==========================================================================================",
       "sudo /usr/bin/docker build -t mlops-frontend .",
       #"docker run -d --restart=always -p 5000:5000 --name mlops-frontend mlops-frontend",
+      "# Install and start systemd service for container management",
       "sudo cp /opt/mlops/mlops-docker-frontend.service /etc/systemd/system/mlops-docker-frontend.service",
       "sudo systemctl enable mlops-docker-frontend.service",
       "sudo systemctl start mlops-docker-frontend.service",
+      "# Start file server for debugging/monitoring (port 8081)",
       "nohup python3 -m http.server 8081 --directory /opt/mlops > /dev/null 2>&1 &"
     ]
   }
@@ -286,7 +110,7 @@ resource "aws_instance" "frontend" {
   connection {
     type        = "ssh"
     user        = "ec2-user"
-    private_key = file(local_file.mlops_key_front_private.filename)
+    private_key = tls_private_key.main_key.private_key_pem
     host        = self.public_ip
   }
 
@@ -296,8 +120,6 @@ resource "aws_instance" "frontend" {
     Type = "Frontend"
   })
 }
-
-# ALB resources removed - using direct EC2 access for simplified architecture
 
 # Output the frontend instance details
 output "frontend_instance_id" {
@@ -310,18 +132,10 @@ output "frontend_instance_public_ip" {
   value       = aws_instance.frontend.public_ip
 }
 
-output "frontend_instance_public_dns" {
-  description = "Public DNS of the frontend EC2 instance"
-  value       = aws_instance.frontend.public_dns
-}
-
 output "frontend_direct_url" {
   description = "Direct URL to access the frontend"
   value       = "http://${aws_instance.frontend.public_ip}:5000"
 }
-
-# Remote state access removed - using direct references instead
-# All resources are in the same state file, so direct references are preferred
 
 # Output orchestration information for reference
 output "orchestration_ips_available" {

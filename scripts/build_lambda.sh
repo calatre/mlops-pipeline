@@ -69,6 +69,10 @@ log_info "Project: ${PROJECT_NAME}"
 log_info "Environment: ${ENVIRONMENT}"
 log_info "Image tag: ${IMAGE_TAG}"
 
+# Force classic builder (Docker schema v2) and linux/amd64 for Lambda compatibility
+export DOCKER_BUILDKIT=0
+export DOCKER_DEFAULT_PLATFORM=linux/amd64
+
 # Build the Docker image with platform specification for Lambda compatibility
 docker build \
     --platform linux/amd64 \

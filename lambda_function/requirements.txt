@@ -1,5 +1,5 @@
 boto3==1.34.131
+# Pin numpy to a manylinux wheel to avoid compiling from source in the Lambda base image
+numpy==1.26.4
 scikit-learn==1.4.2
 xgboost==2.0.3
-pandas==2.1.4
-numpy==1.26.4

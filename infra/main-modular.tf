@@ -31,33 +31,167 @@ module "vpc" {
   environment          = var.environment
   vpc_cidr             = var.vpc_cidr
   public_subnet_cidrs  = var.public_subnet_cidrs
-  private_subnet_cidrs = var.private_subnet_cidrs
-  enable_nat_gateway   = var.enable_nat_gateway
-  single_nat_gateway   = var.single_nat_gateway
-  enable_vpc_flow_logs = var.enable_vpc_flow_logs
-  enable_s3_endpoint   = var.enable_s3_endpoint
+  private_subnet_cidrs = []
+  enable_nat_gateway   = false
+  single_nat_gateway   = false
+  enable_vpc_flow_logs = false
+  enable_s3_endpoint   = false
 
   tags = var.tags
 }
 
-# Security Groups Module
-module "security_groups" {
+# Security Group Module
+module "security_group" {
   source = "./modules/security-groups"
 
-  project_name = var.project_name
-  environment  = var.environment
-  vpc_id       = module.vpc.vpc_id
-  vpc_cidr     = module.vpc.vpc_cidr_block
-
-  # Enable EC2 security group
-  create_ec2_sg = true
-
-  # SSH access configuration
-  enable_ssh_access = true
-  #enable_ssh_access = var.environment != "prod" # Disable SSH in production
-  #ssh_allowed_cidrs = var.environment == "prod" ? var.production_allowed_cidrs : ["0.0.0.0/0"]
+  project_name            = var.project_name
+  environment             = var.environment
+  vpc_id                  = module.vpc.vpc_id
+  vpc_cidr                = var.vpc_cidr
+  create_ec2_sg           = true
+  create_lambda_sg        = false
+  create_vpc_endpoints_sg = false
+  enable_ssh_access       = true
+  ssh_allowed_cidrs       = ["0.0.0.0/0"]
 
   tags = var.tags
+}
+
+# Consolidated Security Group for all EC2 Instances
+resource "aws_security_group" "main" {
+  name        = "${var.project_name}-main-sg-${var.environment}"
+  description = "Main security group for all EC2 instances"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    description = "Allow SSH access"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Allow app access on port 5000"
+    from_port   = 5000
+    to_port     = 5000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Allow Airflow access on port 8080"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Allow status page on port 8081"
+    from_port   = 8081
+    to_port     = 8081
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-main-sg-${var.environment}"
+  })
+}
+
+# Consolidated IAM Role for EC2 Instances
+resource "aws_iam_role" "main_ec2_role" {
+  name = "${var.project_name}-main-ec2-role-${var.environment}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+# Consolidated IAM Policy
+resource "aws_iam_policy" "main_ec2_policy" {
+  name = "${var.project_name}-main-ec2-policy-${var.environment}"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = "s3:*",
+        Resource = [
+          aws_s3_bucket.mlflow_artifacts.arn,
+          "${aws_s3_bucket.mlflow_artifacts.arn}/*",
+          aws_s3_bucket.data_storage.arn,
+          "${aws_s3_bucket.data_storage.arn}/*",
+          aws_s3_bucket.monitoring_reports.arn,
+          "${aws_s3_bucket.monitoring_reports.arn}/*"
+        ]
+      },
+      {
+        Effect   = "Allow",
+        Action   = "kinesis:*",
+        Resource = aws_kinesis_stream.taxi_predictions.arn
+      },
+      {
+        Effect   = "Allow",
+        Action   = "logs:*",
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "main_ec2_policy_attachment" {
+  role       = aws_iam_role.main_ec2_role.name
+  policy_arn = aws_iam_policy.main_ec2_policy.arn
+}
+
+# Attach SSM policy for Session Manager access (optional but recommended)
+resource "aws_iam_role_policy_attachment" "main_ssm" {
+  role       = aws_iam_role.main_ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "main_instance_profile" {
+  name = "${var.project_name}-main-instance-profile-${var.environment}"
+  role = aws_iam_role.main_ec2_role.name
+}
+
+
+# Single SSH Key for all instances
+resource "tls_private_key" "main_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+resource "aws_key_pair" "main_key" {
+  key_name   = "mlops-main-key"
+  public_key = tls_private_key.main_key.public_key_openssh
+}
+
+resource "local_file" "main_key_private" {
+  content         = tls_private_key.main_key.private_key_pem
+  filename        = "${path.module}/ssh/mlops_main_key.pem"
+  file_permission = "0600"
 }
 
 # ECR Module
@@ -184,7 +318,7 @@ resource "aws_kinesis_stream" "taxi_predictions" {
   tags = var.tags
 }
 
-# Lambda Function Role (for future use)
+# Lambda Function Role
 resource "null_resource" "build_lambda_container" {
   # Triggers rebuild when Lambda source code or build script changes
   triggers = {
@@ -204,7 +338,7 @@ resource "null_resource" "build_lambda_container" {
   ]
 }
 
-# Lambda Function Role (for future use)
+# Lambda Function Role
 resource "aws_iam_role" "lambda_role" {
   name = "${var.project_name}-lambda-role-${var.environment}"
 
@@ -291,6 +425,7 @@ resource "aws_lambda_function" "taxi_prediction" {
   image_uri     = "${module.ecr.lambda_repository_url}:latest"
   timeout       = var.lambda_timeout
   memory_size   = var.lambda_memory_size
+  architectures = ["x86_64"]
 
   environment {
     variables = {

@@ -64,40 +64,20 @@ output "public_subnet_ids" {
   value       = module.vpc.public_subnet_ids
 }
 
-output "private_subnet_ids" {
-  description = "IDs of the private subnets"
-  value       = module.vpc.private_subnet_ids
-}
-
 output "internet_gateway_id" {
   description = "ID of the Internet Gateway"
   value       = module.vpc.internet_gateway_id
 }
 
-output "nat_gateway_ids" {
-  description = "IDs of the NAT Gateways"
-  value       = module.vpc.nat_gateway_ids
-}
-
-output "nat_gateway_ips" {
-  description = "Public IPs of the NAT Gateways"
-  value       = module.vpc.nat_gateway_ips
-}
-
-output "network_summary" {
-  description = "Summary of network configuration"
-  value       = module.vpc.network_summary
-}
-
 # Security Group Outputs
-output "ec2_security_group_id" {
-  description = "ID of the EC2 security group"
-  value       = module.security_groups.ec2_security_group_id
+output "main_security_group_id" {
+  description = "ID of the main security group"
+  value       = aws_security_group.main.id
 }
 
-output "security_groups_summary" {
-  description = "Summary of all created security groups"
-  value       = module.security_groups.security_groups_summary
+output "main_security_group_name" {
+  description = "Name of the main security group"
+  value       = aws_security_group.main.name
 }
 
 # MLOps Orchestration EC2 Instance Outputs
@@ -182,7 +162,7 @@ output "mlops_orchestration_summary" {
     private_dns       = aws_instance.mlops_orchestration.private_dns
     availability_zone = aws_instance.mlops_orchestration.availability_zone
     subnet_id         = aws_instance.mlops_orchestration.subnet_id
-    security_groups   = aws_instance.mlops_orchestration.vpc_security_group_ids
+    security_group    = aws_instance.mlops_orchestration.vpc_security_group_ids
     iam_profile       = aws_instance.mlops_orchestration.iam_instance_profile
     key_name          = aws_instance.mlops_orchestration.key_name
     state             = aws_instance.mlops_orchestration.instance_state
@@ -230,14 +210,10 @@ output "infrastructure_summary" {
     environment                        = var.environment
     region                             = var.aws_region
     vpc_enabled                        = true
-    nat_gateways                       = length(module.vpc.nat_gateway_ids)
-    single_nat_gateway                 = var.single_nat_gateway
-    vpc_flow_logs                      = var.enable_vpc_flow_logs
-    s3_endpoint                        = var.enable_s3_endpoint
-    availability_zones                 = length(module.vpc.availability_zones)
+    nat_gateways                       = 0
     public_subnets                     = length(module.vpc.public_subnet_ids)
-    private_subnets                    = length(module.vpc.private_subnet_ids)
-    security_groups                    = module.security_groups.security_groups_summary.total_security_groups
+    private_subnets                    = 0
+    security_groups                    = 1
     mlops_orchestration_instance_type  = aws_instance.mlops_orchestration.instance_type
     mlops_orchestration_instance_state = aws_instance.mlops_orchestration.instance_state
     lambda_function_created            = true

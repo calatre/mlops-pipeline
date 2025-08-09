@@ -4,7 +4,7 @@ A simple, clean web interface for the MLOps taxi trip duration prediction pipeli
 
 This is intended to be a simple entry point for the full pipeline demo.
 
-This ends up inside a docker container.
+This ends up inside a docker container. The deployment process includes intelligent Docker daemon readiness checking with dynamic waiting and retry logic, ensuring reliable container builds across different EC2 instance types and startup conditions.
 
 ## 📃 Features
 
